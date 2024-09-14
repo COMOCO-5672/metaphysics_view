@@ -22,7 +22,18 @@ file(GLOB_RECURSE SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm"
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${PLATFORM_SOURCES})
+set(IMGUI_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui_draw.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui_widgets.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui_tables.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends/imgui_impl_opengl3.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends/imgui_impl_glfw.cpp
+)
+
+add_executable(${PROJECT_NAME} ${SOURCES} ${PLATFORM_SOURCES} ${IMGUI_SOURCES})
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui)
 
 if(APPLE)
     target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Cocoa")
@@ -32,6 +43,15 @@ if(APPLE)
         )
     endif()
 endif()
+
+if(DEFINED ENV{glfw3_DIR_${ARCH_DIR}})
+    set(glfw3_DIR $ENV{glfw3_DIR_${ARCH_DIR}})
+endif()
+
+find_package(OpenGL REQUIRED)
+find_package(glfw3 REQUIRED)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     VERSION ${PROJECT_VERSION}
