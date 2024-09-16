@@ -57,6 +57,9 @@ void processInput(GLFWwindow *window)
     if (!windowFocused)
         return;
 
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
     float cameraSpeed = 0.01f;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
@@ -114,7 +117,7 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     cameraFront = glm::normalize(front);
 }
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
     currentWidth = width;
@@ -136,7 +139,7 @@ int main()
         return -1;
     }
     glfwMakeContextCurrent(window);
-    //glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetWindowFocusCallback(window, focus_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
