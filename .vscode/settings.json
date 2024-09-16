@@ -1,0 +1,8 @@
+{
+    "terminal.integrated.shell.windows": "D:\\msys64\\usr\\bin\\bash.exe",
+    "terminal.integrated.env.windows": {
+      "PATH": "D:\\msys64\\mingw64\\bin;D:\\msys64\\usr\\bin;${env:PATH}"
+    },
+    "makefile.configureOnOpen": true
+  }
+  
