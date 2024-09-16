@@ -12,8 +12,15 @@
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+// glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+// glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+// glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+int currentWidth = SCR_WIDTH;
+int currentHeight = SCR_HEIGHT;
+
+glm::vec3 cameraPos = glm::vec3(5.0f, 5.0f, 5.0f);
+glm::vec3 cameraFront = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 float lastX = SCR_WIDTH / 2.0f;
@@ -107,6 +114,13 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     cameraFront = glm::normalize(front);
 }
 
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+    currentWidth = width;
+    currentHeight = height;
+}
+
 int main()
 {
     glfwInit();
@@ -122,9 +136,10 @@ int main()
         return -1;
     }
     glfwMakeContextCurrent(window);
-    glfwSetCursorPosCallback(window, mouse_callback);
+    //glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetWindowFocusCallback(window, focus_callback);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     if (glewInit() != GLEW_OK) {
         std::cout << "Failed to initialize GLEW" << std::endl;
@@ -200,7 +215,7 @@ int main()
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 projection = glm::perspective(
-            glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+            glm::radians(45.0f), (float)currentWidth / (float)currentHeight, 0.1f, 100.0f);
 
         unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
         unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
@@ -212,6 +227,11 @@ int main()
 
         glBindVertexArray(VAO);
         glDrawArrays(GL_LINES, 0, vertices.size() / 3);
+
+        ImGui::Begin("Hello, ImGui!");
+        ImGui::Text("this is ImGui window");
+
+        ImGui::End();
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
