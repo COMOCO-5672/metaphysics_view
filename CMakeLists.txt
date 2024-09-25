@@ -55,6 +55,40 @@ find_package(GLEW REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw GLEW::GLEW)
 
+if(CMAKE_COMPILER_ID MATCHES "GNU")
+    # 查找 g++ 可执行文件
+    find_program(MINGW_GCC g++)
+    if(MINGW_GCC)
+        # 获取 g++ 的目录，即 MinGW 的 bin 目录
+        get_filename_component(MINGW_BIN_DIR ${MINGW_GCC} DIRECTORY)
+
+        # 指定要拷贝的 DLL 文件
+        set(DLL_FILES
+            "${MINGW_BIN_DIR}/libgcc_s_seh-1.dll"
+            "${MINGW_BIN_DIR}/libstdc++-6.dll"
+            "${MINGW_BIN_DIR}/libwinpthread-1.dll"
+            "${MINGW_BIN_DIR}/glfw.dll"
+            "${MINGW_BIN_DIR}/glew3.dll"
+        )
+
+        # 安装可执行文件
+        install(TARGETS your_executable_name DESTINATION bin)
+
+        # 拷贝指定的 DLL 文件到安装目录
+        foreach(DLL ${DLL_FILES})
+            if(EXISTS ${DLL})  # 检查 DLL 是否存在
+                install(FILES ${DLL} DESTINATION bin)
+            else()
+                message(WARNING "DLL file not found: ${DLL}")
+            endif()
+        endforeach()
+    else()
+        message(FATAL_ERROR "MinGW g++ not found.")
+    endif()
+
+endif()
+
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
