@@ -27,7 +27,7 @@ double lastX = SCR_WIDTH / 2.0f;
 double lastY = SCR_HEIGHT / 2.0f;
 float yaw = -90.0f;
 float pitch = 0.0f;
-bool firstMove = false;
+bool firstMove = true;
 bool mouse_pressed = false;
 
 const char *vertexShaderSource = R"(
@@ -123,6 +123,12 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     currentHeight = height;
 }
 
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
+{
+    float zoom_speed = 0.1f;
+    cameraPos += cameraFront * zoom_speed * (float)yoffset;
+}
+
 int main()
 {
     glfwInit();
@@ -140,9 +146,9 @@ int main()
     glfwMakeContextCurrent(window);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    // glfwSetWindowFocusCallback(window, focus_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
     if (glewInit() != GLEW_OK) {
         std::cout << "Failed to initialize GLEW" << std::endl;
