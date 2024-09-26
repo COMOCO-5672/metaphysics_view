@@ -1,3 +1,6 @@
 [submodule "framework/ui/imgui"]
 	path = framework/ui/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "metaphysics_deps"]
+	path = metaphysics_deps
+	url = https://github.com/COMOCO-5672/metaphysics_deps.git
