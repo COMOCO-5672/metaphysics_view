@@ -23,11 +23,12 @@ glm::vec3 cameraPos = glm::vec3(5.0f, 5.0f, 5.0f);
 glm::vec3 cameraFront = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
-float lastX = SCR_WIDTH / 2.0f;
-float lastY = SCR_HEIGHT / 2.0f;
+double lastX = SCR_WIDTH / 2.0f;
+double lastY = SCR_HEIGHT / 2.0f;
 float yaw = -90.0f;
 float pitch = 0.0f;
-bool firstMouse = true;
+bool firstMove = false;
+bool mouse_pressed = false;
 
 const char *vertexShaderSource = R"(
     #version 330 core
@@ -50,13 +51,8 @@ const char *fragmentShaderSource = R"(
     }
 )";
 
-bool windowFocused = false;
-
 void processInput(GLFWwindow *window)
 {
-    if (!windowFocused)
-        return;
-
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
@@ -71,26 +67,29 @@ void processInput(GLFWwindow *window)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 }
 
-void focus_callback(GLFWwindow *window, int focused)
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
-    windowFocused = focused;
-    if (focused) {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    }
-    else {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            mouse_pressed = true;
+            firstMove = true;
+            glfwGetCursorPos(window, &lastX, &lastY);
+        }
+        else if (action == GLFW_RELEASE)
+            mouse_pressed = false;
     }
 }
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
-    if (!windowFocused)
+    if (!mouse_pressed)
         return;
 
-    if (firstMouse) {
+    if (firstMove) {
         lastX = xpos;
         lastY = ypos;
-        firstMouse = false;
+        firstMove = false;
+        return;
     }
 
     float xoffset = xpos - lastX;
@@ -98,7 +97,7 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     lastX = xpos;
     lastY = ypos;
 
-    float sensitivity = 0.1f;
+    float sensitivity = 0.05f;
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
@@ -140,9 +139,10 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSetWindowFocusCallback(window, focus_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    // glfwSetWindowFocusCallback(window, focus_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     if (glewInit() != GLEW_OK) {
         std::cout << "Failed to initialize GLEW" << std::endl;
