@@ -1,97 +1,59 @@
-cmake_minimum_required(VERSION 3.12)
-
-project(metaphysics VERSION 1.0.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.10)
+project(YourProjectName)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+# Ogre源码路径
+set(OGRE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/metaphysics_deps/ogre)
 
-if(APPLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -stdlib=libc++ -mmacosx-version-min=10.15")
-    set(PLATFORM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/macos/main.mm)
-    enable_language(OBJCXX)
-else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-    set(PLATFORM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/windows/main.cpp)
-endif()
-
-file(GLOB_RECURSE SOURCES 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm"
+# 添加Ogre的CMake模块路径
+set(CMAKE_MODULE_PATH
+  ${CMAKE_MODULE_PATH}
+  "${OGRE_SOURCE_DIR}/CMake"
+  "${OGRE_SOURCE_DIR}/CMake/Utils"
+  "${OGRE_SOURCE_DIR}/CMake/Packages"
 )
 
-set(IMGUI_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui_draw.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui_widgets.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui_tables.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends/imgui_impl_opengl3.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends/imgui_impl_glfw.cpp
+# 包含Ogre的CMake配置
+include(OgreConfigTargets)
+
+# 设置Ogre的构建选项
+set(OGRE_BUILD_COMPONENT_PAGING TRUE)
+set(OGRE_BUILD_COMPONENT_TERRAIN TRUE)
+set(OGRE_BUILD_COMPONENT_VOLUME TRUE)
+set(OGRE_BUILD_PLUGIN_BSP TRUE)
+set(OGRE_BUILD_PLUGIN_PCZ TRUE)
+set(OGRE_BUILD_PLUGIN_PFX TRUE)
+set(OGRE_BUILD_RENDERSYSTEM_GL TRUE)
+set(OGRE_BUILD_RENDERSYSTEM_GL3PLUS TRUE)
+set(OGRE_BUILD_RENDERSYSTEM_GLES2 TRUE)
+set(OGRE_BUILD_SAMPLES FALSE)
+
+# 添加Ogre子目录
+add_subdirectory(${OGRE_SOURCE_DIR} ${CMAKE_BINARY_DIR}/ogre)
+
+# 你的项目源文件
+set(SOURCE_FILES
+    src/platform/windows/main.cpp
+    # 添加其他源文件
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${PLATFORM_SOURCES} ${IMGUI_SOURCES})
+# 创建可执行文件
+add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends)
-
-if(APPLE)
-    target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Cocoa")
-    if(CMAKE_GENERATOR MATCHES "Xcode")
-        set_target_properties(${PROJECT_NAME} PROPERTIES 
-            MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/macos/Info.plist
-        )
-    endif()
-endif()
-
-if(DEFINED ENV{glfw3_DIR_${ARCH_DIR}})
-    set(glfw3_DIR $ENV{glfw3_DIR_${ARCH_DIR}})
-endif()
-
-find_package(OpenGL REQUIRED)
-find_package(glfw3 REQUIRED)
-find_package(GLEW REQUIRED)
-
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw GLEW::GLEW)
-
-if(CMAKE_COMPILER_ID MATCHES "GNU")
-    # 查找 g++ 可执行文件
-    find_program(MINGW_GCC g++)
-    if(MINGW_GCC)
-        # 获取 g++ 的目录，即 MinGW 的 bin 目录
-        get_filename_component(MINGW_BIN_DIR ${MINGW_GCC} DIRECTORY)
-
-        # 指定要拷贝的 DLL 文件
-        set(DLL_FILES
-            "${MINGW_BIN_DIR}/libgcc_s_seh-1.dll"
-            "${MINGW_BIN_DIR}/libstdc++-6.dll"
-            "${MINGW_BIN_DIR}/libwinpthread-1.dll"
-            "${MINGW_BIN_DIR}/glfw.dll"
-            "${MINGW_BIN_DIR}/glew3.dll"
-        )
-
-        # 安装可执行文件
-        install(TARGETS your_executable_name DESTINATION bin)
-
-        # 拷贝指定的 DLL 文件到安装目录
-        foreach(DLL ${DLL_FILES})
-            if(EXISTS ${DLL})  # 检查 DLL 是否存在
-                install(FILES ${DLL} DESTINATION bin)
-            else()
-                message(WARNING "DLL file not found: ${DLL}")
-            endif()
-        endforeach()
-    else()
-        message(FATAL_ERROR "MinGW g++ not found.")
-    endif()
-
-endif()
-
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    VERSION ${PROJECT_VERSION}
-    SOVERSION ${PROJECT_VERSION_MAJOR}
+# 链接Ogre库
+target_link_libraries(${PROJECT_NAME}
+    OgreMain
+    OgreBites
+    OgreRTShaderSystem
+    # 添加其他需要的Ogre组件
 )
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# 包含Ogre头文件
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${OGRE_SOURCE_DIR}/OgreMain/include
+    ${OGRE_SOURCE_DIR}/Components/Bites/include
+    ${OGRE_SOURCE_DIR}/Components/RTShaderSystem/include
+    # 添加其他需要的Ogre头文件路径
+)
