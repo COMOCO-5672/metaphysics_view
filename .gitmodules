@@ -4,3 +4,6 @@
 [submodule "metaphysics_deps"]
 	path = metaphysics_deps
 	url = https://github.com/COMOCO-5672/metaphysics_deps.git
+[submodule "framework/ui/glfw3"]
+	path = framework/ui/glfw3
+	url = https://github.com/glfw/glfw.git
