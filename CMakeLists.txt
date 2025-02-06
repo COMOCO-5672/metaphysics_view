@@ -17,10 +17,15 @@ else()
     set(PLATFORM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/windows/main.cpp)
 endif()
 
-file(GLOB_RECURSE SOURCES 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm"
-)
+if(APPLE)
+    file(GLOB_RECURSE SOURCES 
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/macos/*.mm"
+    )
+else()
+    file(GLOB_RECURSE SOURCES 
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/windows/*.cpp"
+    )
+endif()
 
 set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui.cpp
