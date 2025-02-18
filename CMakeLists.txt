@@ -57,8 +57,9 @@ endif()
 find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(glm CONFIG REQUIRED)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw GLEW::GLEW)
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw GLEW::GLEW glm::glm)
 
 if(CMAKE_COMPILER_ID MATCHES "GNU")
     # 查找 g++ 可执行文件
