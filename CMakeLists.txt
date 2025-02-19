@@ -17,6 +17,11 @@ else()
     set(PLATFORM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/windows/main.cpp)
 endif()
 
+file(GLOB_RECURSE PLATFORM_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.h"
+)
+
 if(APPLE)
     file(GLOB_RECURSE SOURCES 
         "${CMAKE_CURRENT_SOURCE_DIR}/src/macos/*.mm"
@@ -68,7 +73,7 @@ if(CMAKE_COMPILER_ID MATCHES "GNU")
         # 获取 g++ 的目录，即 MinGW 的 bin 目录
         get_filename_component(MINGW_BIN_DIR ${MINGW_GCC} DIRECTORY)
 
-        # 指定要拷贝的 DLL 文件
+        # 指定要拷贝的 DLL 文件（windows下依赖这些库运行）
         set(DLL_FILES
             "${MINGW_BIN_DIR}/libgcc_s_seh-1.dll"
             "${MINGW_BIN_DIR}/libstdc++-6.dll"
