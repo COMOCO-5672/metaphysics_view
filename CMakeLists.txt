@@ -24,11 +24,11 @@ file(GLOB_RECURSE PLATFORM_SOURCES
 
 if(APPLE)
     file(GLOB_RECURSE SOURCES 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/macos/*.mm"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/macos/*.mm"
     )
 else()
     file(GLOB_RECURSE SOURCES 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/windows/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/windows/*.cpp"
     )
 endif()
 
