@@ -64,6 +64,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/glfw3/include
 )
 
 if(APPLE)
@@ -80,9 +81,77 @@ if(DEFINED ENV{glfw3_DIR_${ARCH_DIR}})
 endif()
 
 find_package(OpenGL REQUIRED)
-find_package(glfw3 REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(glm CONFIG REQUIRED)
+
+# 检查是否有系统安装的glfw3和GLEW，如果没有则使用本地版本
+find_package(glfw3 QUIET)
+find_package(GLEW QUIET)
+find_package(glm CONFIG QUIET)
+
+# 如果找不到glfw3，使用本地的GLFW
+if(NOT glfw3_FOUND)
+    message(STATUS "System glfw3 not found, using local GLFW from framework/ui/glfw3")
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/glfw3 ${CMAKE_BINARY_DIR}/glfw3)
+    set(GLFW_LIBRARY glfw)
+else()
+    message(STATUS "Using system glfw3")
+    set(GLFW_LIBRARY glfw)
+endif()
+
+# 如果找不到GLEW，提供手动指定路径的选项
+if(NOT GLEW_FOUND)
+    message(WARNING "GLEW not found! Please install GLEW or set GLEW_DIR")
+    message(STATUS "You can install GLEW with: vcpkg install glew:x64-windows")
+    message(STATUS "Or download from: http://glew.sourceforge.net/")
+    # 尝试查找常见位置
+    find_path(GLEW_INCLUDE_DIR GL/glew.h
+        PATHS
+        "C:/Program Files/GLEW/include"
+        "D:/libs/GLEW/include"
+        ENV GLEW_DIR
+        PATH_SUFFIXES include
+    )
+    find_library(GLEW_LIBRARY
+        NAMES glew32 glew GLEW
+        PATHS
+        "C:/Program Files/GLEW/lib"
+        "D:/libs/GLEW/lib"
+        ENV GLEW_DIR
+        PATH_SUFFIXES lib lib/Release/x64
+    )
+    if(GLEW_INCLUDE_DIR AND GLEW_LIBRARY)
+        message(STATUS "Found GLEW manually: ${GLEW_LIBRARY}")
+        add_library(GLEW::GLEW UNKNOWN IMPORTED)
+        set_target_properties(GLEW::GLEW PROPERTIES
+            IMPORTED_LOCATION "${GLEW_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${GLEW_INCLUDE_DIR}"
+        )
+    endif()
+endif()
+
+# GLM通常是header-only，如果找不到就尝试本地查找
+if(NOT glm_FOUND)
+    message(STATUS "GLM not found via find_package, trying to find manually...")
+    find_path(GLM_INCLUDE_DIR glm/glm.hpp
+        PATHS
+        ${CMAKE_CURRENT_SOURCE_DIR}/metaphysics_deps
+        "C:/Program Files/glm"
+        ENV GLM_DIR
+        PATH_SUFFIXES include
+    )
+    if(GLM_INCLUDE_DIR)
+        message(STATUS "Found GLM at: ${GLM_INCLUDE_DIR}")
+        add_library(glm INTERFACE)
+        target_include_directories(glm INTERFACE ${GLM_INCLUDE_DIR})
+        add_library(glm::glm ALIAS glm)
+    else()
+        message(WARNING "GLM not found! Please install GLM or set GLM_DIR")
+        message(STATUS "You can install GLM with: vcpkg install glm:x64-windows")
+    endif()
+endif()
 
 # 使用本地的Assimp
 set(ASSIMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/metaphysics_deps/assimp)
@@ -98,11 +167,19 @@ add_subdirectory(${ASSIMP_DIR} ${CMAKE_BINARY_DIR}/assimp EXCLUDE_FROM_ALL)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     OpenGL::GL 
-    glfw 
-    GLEW::GLEW 
-    glm::glm
+    ${GLFW_LIBRARY}
     assimp
 )
+
+# 链接GLEW（如果找到）
+if(TARGET GLEW::GLEW)
+    target_link_libraries(${PROJECT_NAME} PRIVATE GLEW::GLEW)
+endif()
+
+# 链接GLM（如果找到）
+if(TARGET glm::glm)
+    target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
+endif()
 
 if(CMAKE_COMPILER_ID MATCHES "GNU")
     # 查找 g++ 可执行文件
