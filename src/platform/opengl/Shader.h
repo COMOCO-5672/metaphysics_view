@@ -1,5 +1,8 @@
 #pragma once
 
+// GLEW must be included before any OpenGL headers
+#include <GL/glew.h>
+
 #include <string>
 #include <glm/glm.hpp>
 #include <unordered_map>

@@ -1,8 +1,9 @@
 #include "ImGuiLayer.h"
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-#include <GLFW/glfw3.h>
 #include <iostream>
 
 namespace Metaphysics {
@@ -21,7 +22,9 @@ void ImGuiLayer::Init(void* window)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
+#ifdef IMGUI_HAS_DOCKING
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+#endif
     
     ImGui::StyleColorsDark();
     
@@ -51,7 +54,8 @@ void ImGuiLayer::EndFrame()
 
 void ImGuiLayer::RenderUI(AppState& state)
 {
-    // 创建主Docking空间
+    // 如果ImGui支持Docking，则创建主DockSpace；否则创建顶层无边框菜单窗口
+#ifdef IMGUI_HAS_DOCKING
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->Pos);
     ImGui::SetNextWindowSize(viewport->Size);
@@ -74,6 +78,29 @@ void ImGuiLayer::RenderUI(AppState& state)
 
     RenderMenuBar(state);
     ImGui::End();
+#else
+    // Fallback: simple full-screen menu bar window (no docking)
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar;
+    window_flags |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+    window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+    // Use the display size to position and size the menu window
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetNextWindowPos(ImVec2(0,0));
+    ImGui::SetNextWindowSize(io.DisplaySize);
+
+    ImGui::Begin("MainMenuBar", nullptr, window_flags);
+    ImGui::PopStyleVar(3);
+
+    // Render the menu bar inside this window
+    RenderMenuBar(state);
+
+    ImGui::End();
+#endif
 
     // 渲染各个面板
     if (state.showSceneHierarchy) {

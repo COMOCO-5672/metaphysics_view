@@ -4,6 +4,16 @@
 
 namespace Metaphysics {
 
+// 相机移动方向枚举
+enum class CameraMovement {
+    FORWARD,
+    BACKWARD,
+    LEFT,
+    RIGHT,
+    UP,
+    DOWN
+};
+
 // 相机类
 class Camera {
 public:
@@ -51,16 +61,6 @@ private:
     float m_Zoom;
     float m_Near;
     float m_Far;
-};
-
-// 相机移动方向枚举
-enum class CameraMovement {
-    FORWARD,
-    BACKWARD,
-    LEFT,
-    RIGHT,
-    UP,
-    DOWN
 };
 
 } // namespace Metaphysics

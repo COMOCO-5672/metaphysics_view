@@ -1,5 +1,8 @@
 #pragma once
 
+// GLEW must be included before any OpenGL headers
+#include <GL/glew.h>
+
 #include "../../core/renderer/RenderAPI.h"
 #include "../../core/scene/Scene.h"
 #include "../../core/camera/Camera.h"

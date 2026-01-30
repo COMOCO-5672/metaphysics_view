@@ -1,10 +1,13 @@
 #pragma once
 
+// GLEW must be included before any OpenGL headers
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
 #include "../core/scene/Scene.h"
 #include "../core/camera/Camera.h"
 #include "../platform/opengl/OpenGLRenderer.h"
 #include "../ui/imgui_layer/ImGuiLayer.h"
-#include <GLFW/glfw3.h>
 #include <memory>
 
 namespace Metaphysics {
