@@ -49,8 +49,8 @@ uniform float material_shininess;
 
 void main()
 {
-    // Ambient
-    vec3 ambient = lightColor * material_ambient;
+    // 增强的环境光，确保模型基础可见
+    vec3 ambient = lightColor * material_ambient * 1.5;
     
     // Diffuse
     vec3 norm = normalize(Normal);
@@ -64,7 +64,10 @@ void main()
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material_shininess);
     vec3 specular = lightColor * (spec * material_specular);
     
-    vec3 result = ambient + diffuse + specular;
+    // 添加额外的填充光（从相机方向），避免背光面太暗
+    vec3 fillLight = lightColor * material_diffuse * 0.3;
+    
+    vec3 result = ambient + diffuse + specular + fillLight;
     FragColor = vec4(result, 1.0);
 }
 )";
@@ -160,11 +163,12 @@ void OpenGLRenderer::RenderScene(std::shared_ptr<Scene> scene, std::shared_ptr<C
 
     m_Shader->Use();
 
-    // 设置光照
-    glm::vec3 lightPos(5.0f, 5.0f, 5.0f);
-    glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
+    // 设置光照 - 光源位置相对于相机，确保模型总是被照亮
+    glm::vec3 cameraPos = camera->GetPosition();
+    glm::vec3 lightPos = cameraPos + glm::vec3(3.0f, 5.0f, 3.0f);  // 光源在相机右上方
+    glm::vec3 lightColor(1.2f, 1.2f, 1.2f);  // 增强光照强度
 
-    m_Shader->SetVec3("viewPos", camera->GetPosition());
+    m_Shader->SetVec3("viewPos", cameraPos);
     m_Shader->SetVec3("lightPos", lightPos);
     m_Shader->SetVec3("lightColor", lightColor);
 

@@ -3,9 +3,9 @@
 namespace Metaphysics {
 
 Material::Material()
-    : m_Ambient(glm::vec3(0.2f))
-    , m_Diffuse(glm::vec3(0.8f))
-    , m_Specular(glm::vec3(1.0f))
+    : m_Ambient(glm::vec3(0.4f))     // 增加环境光
+    , m_Diffuse(glm::vec3(0.9f))     // 增加漫反射
+    , m_Specular(glm::vec3(0.5f))    // 适度的高光
     , m_Shininess(32.0f)
 {
 }
