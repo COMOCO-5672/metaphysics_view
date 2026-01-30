@@ -1,6 +1,8 @@
 #pragma once
 #include "imgui.h"
 #include "abstractbutton.h"
+
+#include <functional>
 #include <string>
 
 namespace UI
@@ -9,7 +11,7 @@ namespace UI
     {
     public:
         explicit PushButton(std::string &label);
-        ~PushButton();
+        ~PushButton() override;
 
         bool Render();
 
@@ -17,10 +19,15 @@ namespace UI
 
         void SetColor(const ImVec4 &color);
 
-        void OnClickedEvent() override;
+        void OnClickedEvent(WidgetObject *widget) override;
+
+        void SetOnClick(std::function<void()> callback);
 
     private:
         std::string m_label_ { "" };
         bool m_need_pop_color_ = false;
+
+        ImVec2 m_size_{ 0, 0 };
+        std::function<void()> m_callback_;
     };
 }; // namespace UI
