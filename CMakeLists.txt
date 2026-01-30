@@ -17,20 +17,37 @@ else()
     set(PLATFORM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/windows/main.cpp)
 endif()
 
-file(GLOB_RECURSE PLATFORM_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.h"
+# Core sources
+set(CORE_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/Application.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/Application.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/renderer/RenderAPI.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/renderer/RenderAPI.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/camera/Camera.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/camera/Camera.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/material/Material.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/material/Material.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/model/Model.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/model/Model.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/scene/Scene.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/scene/Scene.h
 )
 
-if(APPLE)
-    file(GLOB_RECURSE SOURCES 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/macos/*.mm"
-    )
-else()
-    file(GLOB_RECURSE SOURCES 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/windows/*.cpp"
-    )
-endif()
+# OpenGL platform sources
+set(OPENGL_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/opengl/Shader.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/opengl/Shader.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/opengl/OpenGLRenderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/opengl/OpenGLRenderer.h
+)
+
+# UI sources
+set(UI_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/imgui_layer/ImGuiLayer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/imgui_layer/ImGuiLayer.h
+)
+
+set(SOURCES ${PLATFORM_SOURCES} ${CORE_SOURCES} ${OPENGL_SOURCES} ${UI_SOURCES})
 
 set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui.cpp
@@ -41,10 +58,13 @@ set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends/imgui_impl_glfw.cpp
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${PLATFORM_SOURCES} ${IMGUI_SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES} ${IMGUI_SOURCES})
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends)
+target_include_directories(${PROJECT_NAME} PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends
+)
 
 if(APPLE)
     target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Cocoa")
@@ -64,7 +84,25 @@ find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glm CONFIG REQUIRED)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw GLEW::GLEW glm::glm)
+# 使用本地的Assimp
+set(ASSIMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/metaphysics_deps/assimp)
+
+# 禁用Assimp的一些选项以加快编译和避免错误
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(${ASSIMP_DIR} ${CMAKE_BINARY_DIR}/assimp EXCLUDE_FROM_ALL)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    OpenGL::GL 
+    glfw 
+    GLEW::GLEW 
+    glm::glm
+    assimp
+)
 
 if(CMAKE_COMPILER_ID MATCHES "GNU")
     # 查找 g++ 可执行文件
