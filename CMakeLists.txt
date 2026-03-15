@@ -62,6 +62,12 @@ set(IMGUI_SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${IMGUI_SOURCES})
 
+if(APPLE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE TARGET_DARWIN)
+elseif(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE TARGET_WINDOWS)
+endif()
+
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
 endif()

@@ -7,6 +7,12 @@
 #include <iostream>
 #include <cstring>
 
+#ifdef TARGET_WINDOWS
+#   define WIN32_LEAN_AND_MEAN
+#   include <windows.h>
+#   include <commdlg.h>
+#endif
+
 namespace Metaphysics {
 
 ImGuiLayer::ImGuiLayer()
@@ -349,30 +355,62 @@ void ImGuiLayer::RenderRenderSettings(AppState& state)
 }
 
 // -------------------------------------------------------
+// Windows native file dialog helper
+// -------------------------------------------------------
+#ifdef TARGET_WINDOWS
+static bool OpenFileDialog(char* outPath, size_t outPathSize)
+{
+    OPENFILENAMEA ofn;
+    char szFile[512] = { 0 };
+
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize  = sizeof(ofn);
+    ofn.hwndOwner    = GetActiveWindow();
+    ofn.lpstrFile    = szFile;
+    ofn.nMaxFile     = sizeof(szFile);
+    ofn.lpstrFilter  = "Model Files (*.obj;*.fbx;*.gltf;*.glb;*.dae;*.stl)\0"
+                       "*.obj;*.fbx;*.gltf;*.glb;*.dae;*.stl\0"
+                       "All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrTitle   = "Select a 3D Model";
+    ofn.Flags        = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+    if (GetOpenFileNameA(&ofn) == TRUE) {
+        strncpy_s(outPath, outPathSize, szFile, outPathSize - 1);
+        return true;
+    }
+    return false;
+}
+#endif
+
+// -------------------------------------------------------
 void ImGuiLayer::RenderModelLoader(AppState& state)
 {
     ImGui::Begin("Load Model", &state.showModelLoader);
 
-    ImGui::Text("Enter model file path:");
+    ImGui::Text("Model file path:");
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 90);
     ImGui::InputText("##ModelPath", m_ModelPathBuffer, sizeof(m_ModelPathBuffer));
 
-    ImGui::Spacing();
-    ImGui::Text("Supported formats: OBJ, FBX, GLTF, DAE, etc.");
-    ImGui::Spacing();
-
-    if (ImGui::Button("Load", ImVec2(120, 0))) {
-        if (strlen(m_ModelPathBuffer) > 0 && m_OnModelLoad) {
-            m_OnModelLoad(std::string(m_ModelPathBuffer));
-            state.showModelLoader = false;
-            memset(m_ModelPathBuffer, 0, sizeof(m_ModelPathBuffer));
+    ImGui::SameLine();
+#ifdef TARGET_WINDOWS
+    if (ImGui::Button("Browse...")) {
+        if (OpenFileDialog(m_ModelPathBuffer, sizeof(m_ModelPathBuffer))) {
+            // File selected — auto-load immediately
+            if (m_OnModelLoad) {
+                m_OnModelLoad(std::string(m_ModelPathBuffer));
+                state.showModelLoader = false;
+                memset(m_ModelPathBuffer, 0, sizeof(m_ModelPathBuffer));
+            }
         }
     }
+#else
+    ImGui::TextDisabled("(no file dialog on this platform)");
+#endif
 
-    ImGui::SameLine();
-    if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-        state.showModelLoader = false;
-        memset(m_ModelPathBuffer, 0, sizeof(m_ModelPathBuffer));
-    }
+    ImGui::Spacing();
+    ImGui::Text("Supported: OBJ, FBX, GLTF, GLB, DAE, STL");
+    ImGui::Spacing();
 
     ImGui::Spacing();
     ImGui::Separator();
