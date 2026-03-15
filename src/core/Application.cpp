@@ -171,9 +171,9 @@ void Application::Update(float deltaTime)
 
 void Application::Render()
 {
-    // 渲染3D场景
-    m_Renderer->BeginFrame(glm::vec4(0.2f, 0.3f, 0.3f, 1.0f));
-    m_Renderer->RenderScene(m_AppState.currentScene, m_AppState.camera);
+    m_Renderer->BeginFrame(m_AppState.renderSettings.clearColor);
+    m_Renderer->RenderScene(m_AppState.currentScene, m_AppState.camera,
+                            m_AppState.renderSettings);
     m_Renderer->EndFrame();
 
     // 渲染ImGui

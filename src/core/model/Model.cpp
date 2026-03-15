@@ -101,25 +101,41 @@ std::shared_ptr<Mesh> Model::ProcessMesh(void* meshPtr, void* scenePtr)
         }
     }
 
-    // 处理材质
+    // 处理材质 — 对于没有 .mtl 的 OBJ, Assimp 可能返回极低的值,
+    // 因此先设合理的默认值, 再尝试从文件读取, 最后做 clamp.
     resultMesh->material = std::make_shared<Material>();
     if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-        
-        aiColor3D ambient(0.2f, 0.2f, 0.2f);
-        aiColor3D diffuse(0.8f, 0.8f, 0.8f);
-        aiColor3D specular(1.0f, 1.0f, 1.0f);
-        float shininess = 32.0f;
 
-        material->Get(AI_MATKEY_COLOR_AMBIENT, ambient);
-        material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
-        material->Get(AI_MATKEY_COLOR_SPECULAR, specular);
-        material->Get(AI_MATKEY_SHININESS, shininess);
+        aiColor3D ambient(0.0f, 0.0f, 0.0f);
+        aiColor3D diffuse(0.0f, 0.0f, 0.0f);
+        aiColor3D specular(0.0f, 0.0f, 0.0f);
+        float shininess = 0.0f;
 
-        resultMesh->material->SetAmbient(glm::vec3(ambient.r, ambient.g, ambient.b));
-        resultMesh->material->SetDiffuse(glm::vec3(diffuse.r, diffuse.g, diffuse.b));
-        resultMesh->material->SetSpecular(glm::vec3(specular.r, specular.g, specular.b));
-        resultMesh->material->SetShininess(shininess);
+        bool hasAmbient  = (material->Get(AI_MATKEY_COLOR_AMBIENT,  ambient)  == AI_SUCCESS);
+        bool hasDiffuse  = (material->Get(AI_MATKEY_COLOR_DIFFUSE,  diffuse)  == AI_SUCCESS);
+        bool hasSpecular = (material->Get(AI_MATKEY_COLOR_SPECULAR, specular) == AI_SUCCESS);
+        bool hasShininess = (material->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS);
+
+        glm::vec3 amb = hasAmbient  ? glm::vec3(ambient.r,  ambient.g,  ambient.b)  : glm::vec3(0.3f);
+        glm::vec3 dif = hasDiffuse  ? glm::vec3(diffuse.r,  diffuse.g,  diffuse.b)  : glm::vec3(0.8f);
+        glm::vec3 spc = hasSpecular ? glm::vec3(specular.r, specular.g, specular.b) : glm::vec3(0.5f);
+        float shi = hasShininess ? shininess : 32.0f;
+
+        // Assimp sometimes returns near-black ambient/diffuse for simple OBJs;
+        // if all components are below a threshold, use sensible defaults.
+        auto isNearBlack = [](const glm::vec3& c) {
+            return (c.r + c.g + c.b) < 0.05f;
+        };
+        if (isNearBlack(amb)) amb = glm::vec3(0.3f, 0.3f, 0.3f);
+        if (isNearBlack(dif)) dif = glm::vec3(0.7f, 0.7f, 0.7f);
+
+        if (shi < 1.0f) shi = 32.0f;
+
+        resultMesh->material->SetAmbient(amb);
+        resultMesh->material->SetDiffuse(dif);
+        resultMesh->material->SetSpecular(spc);
+        resultMesh->material->SetShininess(shi);
     }
 
     // 计算AABB
