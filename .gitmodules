@@ -7,3 +7,6 @@
 [submodule "framework/ui/glfw3"]
 	path = framework/ui/glfw3
 	url = https://github.com/glfw/glfw.git
+[submodule "framework/ui/glm"]
+	path = framework/ui/glm
+	url = https://github.com/g-truc/glm.git
