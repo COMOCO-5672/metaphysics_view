@@ -106,10 +106,9 @@ std::shared_ptr<Mesh> Model::ProcessMesh(void* meshPtr, void* scenePtr)
     if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
         
-        // 设置合理的默认值，确保模型可见
-        aiColor3D ambient(0.3f, 0.3f, 0.3f);
+        aiColor3D ambient(0.2f, 0.2f, 0.2f);
         aiColor3D diffuse(0.8f, 0.8f, 0.8f);
-        aiColor3D specular(0.5f, 0.5f, 0.5f);
+        aiColor3D specular(1.0f, 1.0f, 1.0f);
         float shininess = 32.0f;
 
         material->Get(AI_MATKEY_COLOR_AMBIENT, ambient);
@@ -117,24 +116,9 @@ std::shared_ptr<Mesh> Model::ProcessMesh(void* meshPtr, void* scenePtr)
         material->Get(AI_MATKEY_COLOR_SPECULAR, specular);
         material->Get(AI_MATKEY_SHININESS, shininess);
 
-        // 确保材质颜色不会太暗
-        glm::vec3 ambientColor(ambient.r, ambient.g, ambient.b);
-        glm::vec3 diffuseColor(diffuse.r, diffuse.g, diffuse.b);
-        glm::vec3 specularColor(specular.r, specular.g, specular.b);
-        
-        // 如果ambient太暗，使用默认值
-        if (glm::length(ambientColor) < 0.1f) {
-            ambientColor = glm::vec3(0.3f);
-        }
-        
-        // 如果diffuse太暗，使用默认值
-        if (glm::length(diffuseColor) < 0.1f) {
-            diffuseColor = glm::vec3(0.8f);
-        }
-
-        resultMesh->material->SetAmbient(ambientColor);
-        resultMesh->material->SetDiffuse(diffuseColor);
-        resultMesh->material->SetSpecular(specularColor);
+        resultMesh->material->SetAmbient(glm::vec3(ambient.r, ambient.g, ambient.b));
+        resultMesh->material->SetDiffuse(glm::vec3(diffuse.r, diffuse.g, diffuse.b));
+        resultMesh->material->SetSpecular(glm::vec3(specular.r, specular.g, specular.b));
         resultMesh->material->SetShininess(shininess);
     }
 
