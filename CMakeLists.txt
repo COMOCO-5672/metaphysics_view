@@ -9,11 +9,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 if(APPLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -stdlib=libc++ -mmacosx-version-min=10.15")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -mmacosx-version-min=10.15")
     set(PLATFORM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/macos/main.mm)
     enable_language(OBJCXX)
+elseif(MSVC)
+    set(PLATFORM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/windows/main.cpp)
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
     set(PLATFORM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/windows/main.cpp)
 endif()
 
@@ -61,6 +62,16 @@ set(IMGUI_SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${IMGUI_SOURCES})
 
+if(APPLE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE TARGET_DARWIN)
+elseif(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE TARGET_WINDOWS)
+endif()
+
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
+endif()
+
 target_include_directories(${PROJECT_NAME} PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui
@@ -102,14 +113,13 @@ else()
     set(GLFW_LIBRARY glfw)
 endif()
 
-# 如果找不到GLEW，提供手动指定路径的选项
+# 如果找不到GLEW，查找本地目录或提供手动指定路径的选项
 if(NOT GLEW_FOUND)
-    message(WARNING "GLEW not found! Please install GLEW or set GLEW_DIR")
-    message(STATUS "You can install GLEW with: vcpkg install glew:x64-windows")
-    message(STATUS "Or download from: http://glew.sourceforge.net/")
-    # 尝试查找常见位置
+    message(STATUS "GLEW not found via find_package, trying local and common paths...")
     find_path(GLEW_INCLUDE_DIR GL/glew.h
         PATHS
+        "${CMAKE_CURRENT_SOURCE_DIR}/framework/glew-2.2.0/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/framework/glew/include"
         "C:/Program Files/GLEW/include"
         "D:/libs/GLEW/include"
         ENV GLEW_DIR
@@ -118,26 +128,42 @@ if(NOT GLEW_FOUND)
     find_library(GLEW_LIBRARY
         NAMES glew32 glew GLEW
         PATHS
+        "${CMAKE_CURRENT_SOURCE_DIR}/framework/glew-2.2.0/lib/Release/x64"
+        "${CMAKE_CURRENT_SOURCE_DIR}/framework/glew/lib/Release/x64"
         "C:/Program Files/GLEW/lib"
         "D:/libs/GLEW/lib"
         ENV GLEW_DIR
         PATH_SUFFIXES lib lib/Release/x64
     )
     if(GLEW_INCLUDE_DIR AND GLEW_LIBRARY)
-        message(STATUS "Found GLEW manually: ${GLEW_LIBRARY}")
+        message(STATUS "Found GLEW: ${GLEW_LIBRARY}")
         add_library(GLEW::GLEW UNKNOWN IMPORTED)
         set_target_properties(GLEW::GLEW PROPERTIES
             IMPORTED_LOCATION "${GLEW_LIBRARY}"
             INTERFACE_INCLUDE_DIRECTORIES "${GLEW_INCLUDE_DIR}"
         )
+        get_filename_component(GLEW_BIN_DIR "${GLEW_LIBRARY}" DIRECTORY)
+        get_filename_component(GLEW_BIN_DIR "${GLEW_BIN_DIR}/../../../bin/Release/x64" ABSOLUTE)
+        if(EXISTS "${GLEW_BIN_DIR}/glew32.dll")
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${GLEW_BIN_DIR}/glew32.dll"
+                "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            )
+        endif()
+    else()
+        message(FATAL_ERROR "GLEW not found! Please install GLEW or set GLEW_DIR.\n"
+            "  vcpkg: vcpkg install glew:x64-windows\n"
+            "  Manual: http://glew.sourceforge.net/")
     endif()
 endif()
 
-# GLM通常是header-only，如果找不到就尝试本地查找
+# GLM是header-only库，优先使用本地 framework/ui/glm 子模块
 if(NOT glm_FOUND)
-    message(STATUS "GLM not found via find_package, trying to find manually...")
+    message(STATUS "GLM not found via find_package, using local GLM from framework/ui/glm")
     find_path(GLM_INCLUDE_DIR glm/glm.hpp
         PATHS
+        ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/glm
         ${CMAKE_CURRENT_SOURCE_DIR}/metaphysics_deps
         "C:/Program Files/glm"
         ENV GLM_DIR
@@ -145,12 +171,11 @@ if(NOT glm_FOUND)
     )
     if(GLM_INCLUDE_DIR)
         message(STATUS "Found GLM at: ${GLM_INCLUDE_DIR}")
-        add_library(glm INTERFACE)
-        target_include_directories(glm INTERFACE ${GLM_INCLUDE_DIR})
-        add_library(glm::glm ALIAS glm)
+        add_library(glm_headers INTERFACE)
+        target_include_directories(glm_headers INTERFACE ${GLM_INCLUDE_DIR})
+        add_library(glm::glm ALIAS glm_headers)
     else()
-        message(WARNING "GLM not found! Please install GLM or set GLM_DIR")
-        message(STATUS "You can install GLM with: vcpkg install glm:x64-windows")
+        message(FATAL_ERROR "GLM not found! Please install GLM or set GLM_DIR")
     endif()
 endif()
 

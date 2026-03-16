@@ -9,23 +9,24 @@
 
 namespace Metaphysics {
 
-// 应用程序状态
 struct AppState {
     std::shared_ptr<Scene> currentScene;
     std::shared_ptr<Camera> camera;
     std::shared_ptr<Entity> selectedEntity;
     std::shared_ptr<Mesh> selectedMesh;
-    
+
+    RenderSettings renderSettings;
+
     bool showDemoWindow = false;
     bool showSceneHierarchy = true;
     bool showProperties = true;
+    bool showRenderSettings = true;
     bool showModelLoader = false;
-    
+
     int screenWidth = 800;
     int screenHeight = 600;
 };
 
-// ImGui UI管理器
 class ImGuiLayer {
 public:
     ImGuiLayer();
@@ -37,10 +38,8 @@ public:
     void BeginFrame();
     void EndFrame();
 
-    // 渲染UI
     void RenderUI(AppState& state);
 
-    // 事件回调
     void OnModelLoadRequest(std::function<void(const std::string&)> callback) {
         m_OnModelLoad = callback;
     }
@@ -49,8 +48,8 @@ private:
     void RenderMenuBar(AppState& state);
     void RenderSceneHierarchy(AppState& state);
     void RenderProperties(AppState& state);
+    void RenderRenderSettings(AppState& state);
     void RenderModelLoader(AppState& state);
-    void RenderViewport(AppState& state);
 
 private:
     std::function<void(const std::string&)> m_OnModelLoad;
