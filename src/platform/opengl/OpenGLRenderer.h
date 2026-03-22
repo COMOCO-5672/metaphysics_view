@@ -32,7 +32,11 @@ struct RenderSettings {
     glm::vec3 wireColor   = glm::vec3(1.0f, 0.5f, 0.0f);
 
     bool showGrid = true;
-    bool showAxes = true;
+    bool showAxisX = true;
+    bool showAxisY = true;
+    bool showAxisZ = true;
+    /// When true, grid center X/Z lines are fully red/blue (−size..+size). When false, only +X / +Z from origin are colored; negative arms use normal grid gray.
+    bool gridColorNegativeAxes = true;
     float gridSize = 10.0f;
     float gridSpacing = 1.0f;
 };
@@ -62,10 +66,10 @@ private:
     void RenderMesh(std::shared_ptr<Mesh> mesh, const glm::mat4& transform);
     void CleanupMesh(std::shared_ptr<Mesh> mesh);
 
-    void SetupGrid(float size, float spacing);
+    void SetupGrid(float size, float spacing, bool colorNegativeAxes, bool showAxisX, bool showAxisZ);
     void RenderGrid(const glm::mat4& view, const glm::mat4& projection,
-                    float size, float spacing);
-    void RenderAxes(const glm::mat4& view, const glm::mat4& projection);
+                    float size, float spacing, bool colorNegativeAxes, bool showAxisX, bool showAxisZ);
+    void RenderAxes(const glm::mat4& view, const glm::mat4& projection, const RenderSettings& settings);
 
     bool RayIntersectsTriangle(const glm::vec3& rayOrigin, const glm::vec3& rayDir,
                               const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
@@ -81,6 +85,9 @@ private:
     uint32_t m_GridVertexCount = 0;
     float m_LastGridSize = 0.0f;
     float m_LastGridSpacing = 0.0f;
+    bool m_LastGridColorNegativeAxes = true;
+    bool m_LastShowAxisXOnGrid = true;
+    bool m_LastShowAxisZOnGrid = true;
 
     uint32_t m_AxesVAO = 0;
     uint32_t m_AxesVBO = 0;

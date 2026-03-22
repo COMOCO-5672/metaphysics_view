@@ -336,8 +336,17 @@ void ImGuiLayer::RenderRenderSettings(AppState& state)
         if (rs.showGrid) {
             ImGui::SliderFloat("Grid Size",    &rs.gridSize,    5.0f, 50.0f);
             ImGui::SliderFloat("Grid Spacing", &rs.gridSpacing, 0.5f, 5.0f);
+            ImGui::Checkbox("Color negative X/Z on grid", &rs.gridColorNegativeAxes);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Off: only +X / +Z from origin are red/blue; −X / −Z use grid gray.");
+            }
         }
-        ImGui::Checkbox("Show Axes", &rs.showAxes);
+        ImGui::TextUnformatted("Axes");
+        ImGui::Indent();
+        ImGui::Checkbox("X (ground)", &rs.showAxisX);
+        ImGui::Checkbox("Y (vertical)", &rs.showAxisY);
+        ImGui::Checkbox("Z (ground)", &rs.showAxisZ);
+        ImGui::Unindent();
     }
 
     ImGui::Separator();

@@ -176,18 +176,15 @@ bool OpenGLRenderer::Init()
         return false;
     }
 
-    // Build axes VAO (6 vertices: 2 per axis, each with position + color)
+    // X/Y/Z for RenderAxes: Y always drawn here; X/Z only when grid is off (otherwise grid colors center lines).
     float axisLen = 50.0f;
     float axesData[] = {
-        // X axis — red
-        0.f, 0.f, 0.f,  1.f, 0.2f, 0.2f,
-        axisLen, 0.f, 0.f,  1.f, 0.2f, 0.2f,
-        // Y axis — green
-        0.f, 0.f, 0.f,  0.2f, 1.f, 0.2f,
-        0.f, axisLen, 0.f,  0.2f, 1.f, 0.2f,
-        // Z axis — blue
-        0.f, 0.f, 0.f,  0.3f, 0.3f, 1.f,
-        0.f, 0.f, axisLen,  0.3f, 0.3f, 1.f,
+        0.f, 0.f, 0.f,       1.f, 0.2f, 0.2f,
+        axisLen, 0.f, 0.f,   1.f, 0.2f, 0.2f,
+        0.f, 0.f, 0.f,       0.2f, 1.f, 0.2f,
+        0.f, axisLen, 0.f,   0.2f, 1.f, 0.2f,
+        0.f, 0.f, 0.f,       0.3f, 0.3f, 1.f,
+        0.f, 0.f, axisLen,   0.3f, 0.3f, 1.f,
     };
     glGenVertexArrays(1, &m_AxesVAO);
     glGenBuffers(1, &m_AxesVBO);
@@ -235,34 +232,60 @@ void OpenGLRenderer::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_
 // -------------------------------------------------------
 // Grid helpers
 // -------------------------------------------------------
-void OpenGLRenderer::SetupGrid(float size, float spacing)
+void OpenGLRenderer::SetupGrid(float size, float spacing, bool colorNegativeAxes,
+                               bool showAxisX, bool showAxisZ)
 {
-    if (m_GridVAO && size == m_LastGridSize && spacing == m_LastGridSpacing)
+    if (m_GridVAO && size == m_LastGridSize && spacing == m_LastGridSpacing
+        && colorNegativeAxes == m_LastGridColorNegativeAxes
+        && showAxisX == m_LastShowAxisXOnGrid && showAxisZ == m_LastShowAxisZOnGrid) {
         return;
+    }
 
     if (m_GridVAO) { glDeleteVertexArrays(1, &m_GridVAO); m_GridVAO = 0; }
     if (m_GridVBO) { glDeleteBuffers(1, &m_GridVBO); m_GridVBO = 0; }
 
     std::vector<float> verts;
     glm::vec3 gridColor(0.35f, 0.35f, 0.35f);
-    glm::vec3 centerColor(0.5f, 0.5f, 0.5f);
+    glm::vec3 axisXColor(1.f, 0.2f, 0.2f);
+    glm::vec3 axisZColor(0.3f, 0.3f, 1.f);
 
     int halfCount = static_cast<int>(size / spacing);
     for (int i = -halfCount; i <= halfCount; ++i) {
         float pos = i * spacing;
-        glm::vec3 c = (i == 0) ? centerColor : gridColor;
 
-        // line along Z
-        verts.insert(verts.end(), {pos, 0.f, -size, c.r, c.g, c.b});
-        verts.insert(verts.end(), {pos, 0.f,  size, c.r, c.g, c.b});
-        // line along X
-        verts.insert(verts.end(), {-size, 0.f, pos, c.r, c.g, c.b});
-        verts.insert(verts.end(), { size, 0.f, pos, c.r, c.g, c.b});
+        if (i == 0 && !colorNegativeAxes) {
+            glm::vec3 zPos = showAxisZ ? axisZColor : gridColor;
+            glm::vec3 xPos = showAxisX ? axisXColor : gridColor;
+            // Center Z at x=0: gray on −Z; +Z colored if showAxisZ
+            verts.insert(verts.end(), {pos, 0.f, -size, gridColor.r, gridColor.g, gridColor.b});
+            verts.insert(verts.end(), {pos, 0.f,     0.f, gridColor.r, gridColor.g, gridColor.b});
+            verts.insert(verts.end(), {pos, 0.f,     0.f, zPos.r, zPos.g, zPos.b});
+            verts.insert(verts.end(), {pos, 0.f,  size, zPos.r, zPos.g, zPos.b});
+            // Center X at z=0: gray on −X; +X colored if showAxisX
+            verts.insert(verts.end(), {-size, 0.f, pos, gridColor.r, gridColor.g, gridColor.b});
+            verts.insert(verts.end(), {    0.f, 0.f, pos, gridColor.r, gridColor.g, gridColor.b});
+            verts.insert(verts.end(), {    0.f, 0.f, pos, xPos.r, xPos.g, xPos.b});
+            verts.insert(verts.end(), { size, 0.f, pos, xPos.r, xPos.g, xPos.b});
+            continue;
+        }
+
+        // Line parallel to world Z at x = pos
+        glm::vec3 cAlongZ = (i == 0) ? (showAxisZ ? axisZColor : gridColor) : gridColor;
+        verts.insert(verts.end(), {pos, 0.f, -size, cAlongZ.r, cAlongZ.g, cAlongZ.b});
+        verts.insert(verts.end(), {pos, 0.f,  size, cAlongZ.r, cAlongZ.g, cAlongZ.b});
+
+        // Line parallel to world X at z = pos
+        glm::vec3 cAlongX = (i == 0) ? (showAxisX ? axisXColor : gridColor) : gridColor;
+        verts.insert(verts.end(), {-size, 0.f, pos, cAlongX.r, cAlongX.g, cAlongX.b});
+        verts.insert(verts.end(), { size, 0.f, pos, cAlongX.r, cAlongX.g, cAlongX.b});
     }
 
     m_GridVertexCount = static_cast<uint32_t>(verts.size() / 6);
     m_LastGridSize = size;
     m_LastGridSpacing = spacing;
+    m_LastGridColorNegativeAxes = colorNegativeAxes;
+    m_LastShowAxisXOnGrid = showAxisX;
+    m_LastShowAxisZOnGrid = showAxisZ;
 
     glGenVertexArrays(1, &m_GridVAO);
     glGenBuffers(1, &m_GridVBO);
@@ -277,9 +300,10 @@ void OpenGLRenderer::SetupGrid(float size, float spacing)
 }
 
 void OpenGLRenderer::RenderGrid(const glm::mat4& view, const glm::mat4& projection,
-                                float size, float spacing)
+                                float size, float spacing, bool colorNegativeAxes,
+                                bool showAxisX, bool showAxisZ)
 {
-    SetupGrid(size, spacing);
+    SetupGrid(size, spacing, colorNegativeAxes, showAxisX, showAxisZ);
     if (!m_GridVAO) return;
 
     m_GridShader->Use();
@@ -293,25 +317,29 @@ void OpenGLRenderer::RenderGrid(const glm::mat4& view, const glm::mat4& projecti
     glBindVertexArray(0);
 }
 
-void OpenGLRenderer::RenderAxes(const glm::mat4& view, const glm::mat4& projection)
+void OpenGLRenderer::RenderAxes(const glm::mat4& view, const glm::mat4& projection,
+                                const RenderSettings& settings)
 {
+    if (!settings.showAxisX && !settings.showAxisY && !settings.showAxisZ)
+        return;
+
     m_GridShader->Use();
     m_GridShader->SetMat4("model", glm::mat4(1.0f));
     m_GridShader->SetMat4("view", view);
     m_GridShader->SetMat4("projection", projection);
     m_GridShader->SetFloat("alpha", 0.9f);
 
-    // X/Z axes lie on the grid plane (y=0). Grid is drawn first and writes the same depth;
-    // default GL_LESS rejects equal depth, so only Y (off the plane) showed. LEQUAL lets axes win.
-    glDepthFunc(GL_LEQUAL);
-
     glLineWidth(2.0f);
     glBindVertexArray(m_AxesVAO);
-    glDrawArrays(GL_LINES, 0, 6);
+    // X/Z on the grid plane: colored by grid when showGrid is on (avoids duplicate lines).
+    if (settings.showAxisX && !settings.showGrid)
+        glDrawArrays(GL_LINES, 0, 2);
+    if (settings.showAxisY)
+        glDrawArrays(GL_LINES, 2, 2);
+    if (settings.showAxisZ && !settings.showGrid)
+        glDrawArrays(GL_LINES, 4, 2);
     glBindVertexArray(0);
     glLineWidth(1.0f);
-
-    glDepthFunc(GL_LESS);
 }
 
 // -------------------------------------------------------
@@ -329,10 +357,11 @@ void OpenGLRenderer::RenderScene(std::shared_ptr<Scene> scene,
 
     // --- Grid & Axes (render first, behind everything) ---
     if (settings.showGrid) {
-        RenderGrid(view, projection, settings.gridSize, settings.gridSpacing);
+        RenderGrid(view, projection, settings.gridSize, settings.gridSpacing,
+                   settings.gridColorNegativeAxes, settings.showAxisX, settings.showAxisZ);
     }
-    if (settings.showAxes) {
-        RenderAxes(view, projection);
+    if (settings.showAxisX || settings.showAxisY || settings.showAxisZ) {
+        RenderAxes(view, projection, settings);
     }
 
     // --- Phong pass ---
