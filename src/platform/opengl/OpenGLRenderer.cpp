@@ -301,11 +301,17 @@ void OpenGLRenderer::RenderAxes(const glm::mat4& view, const glm::mat4& projecti
     m_GridShader->SetMat4("projection", projection);
     m_GridShader->SetFloat("alpha", 0.9f);
 
+    // X/Z axes lie on the grid plane (y=0). Grid is drawn first and writes the same depth;
+    // default GL_LESS rejects equal depth, so only Y (off the plane) showed. LEQUAL lets axes win.
+    glDepthFunc(GL_LEQUAL);
+
     glLineWidth(2.0f);
     glBindVertexArray(m_AxesVAO);
     glDrawArrays(GL_LINES, 0, 6);
     glBindVertexArray(0);
     glLineWidth(1.0f);
+
+    glDepthFunc(GL_LESS);
 }
 
 // -------------------------------------------------------
