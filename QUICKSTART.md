@@ -36,27 +36,50 @@ metaphysics_view/
 
 ### 1. 构建项目
 
+**Windows（推荐）**：在仓库根目录用 PowerShell 执行根目录下的脚本（会自动配置并编译，含 Assimp，首次可能较久）：
+
+```powershell
+cd F:\path\to\metaphysics_view
+.\build.ps1
+```
+
+完全清理后重新配置并编译：`.\build.ps1 -Clean`
+
+**手动 CMake**（与脚本等价）：
+
 ```bash
-cd d:\github\metaphysics_view
 mkdir build
 cd build
+cmake ..
+cmake --build .
+```
+
+MinGW 示例（需已安装 MinGW 并在 PATH 中）：
+
+```bash
 cmake -G "MinGW Makefiles" ..
 cmake --build .
 ```
 
-或使用已有的构建目录：
-
-```bash
-cd d:\github\metaphysics_view\build
-cmake --build .
-```
+增量编译只需在 `build` 目录执行：`cmake --build .`
 
 ### 2. 运行程序
 
-```bash
-cd d:\github\metaphysics_view\build\bin
+可执行文件名为 `metaphysics.exe`。使用 **Visual Studio** 生成器时一般在 `Debug` / `Release` 子目录：
+
+```powershell
+cd build\bin\Debug
 .\metaphysics.exe
 ```
+
+单配置生成器（如部分 Ninja 配置）可能在：
+
+```powershell
+cd build\bin
+.\metaphysics.exe
+```
+
+请在 **exe 所在目录** 运行，以便正确加载同目录下的 `glew32.dll` 等。
 
 ### 3. 加载模型
 

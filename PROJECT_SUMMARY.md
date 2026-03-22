@@ -103,7 +103,7 @@ src/ui/imgui_layer/
 ### 配置文件
 ```
 CMakeLists.txt                  # 构建配置
-build.ps1                       # 构建脚本
+build.ps1                       # Windows：一键 cmake 配置 + 编译（见 README.md）
 ```
 
 ### 文档文件

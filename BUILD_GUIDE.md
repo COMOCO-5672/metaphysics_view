@@ -10,6 +10,29 @@
 .\build.ps1 -Clean
 ```
 
+### 若提示「无法加载……禁止运行脚本」（Execution Policy）
+
+这是 **PowerShell 执行策略** 拦住了本地 `.ps1`，不是项目脚本坏了。
+
+**任选其一：**
+
+1. **只运行这一次（不改系统策略）**
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\build.ps1 -Clean
+   ```
+
+2. **当前用户永久允许本地脚本（常用）**  
+   在 PowerShell 中执行（可能需要确认 `Y`）：
+
+   ```powershell
+   Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+   ```
+
+   之后可直接 `.\build.ps1`。
+
+3. **不用脚本** — 见下文「手动 CMake」或方法 2 / 3。
+
 ## 方法2：使用Visual Studio（如果你安装了VS）
 
 ### Step 1: 配置CMake生成Visual Studio项目
