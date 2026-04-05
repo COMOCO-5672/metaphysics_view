@@ -42,6 +42,7 @@ cbuffer SceneCB : register(b0)
 cbuffer ObjectCB : register(b1)
 {
     matrix model;
+    matrix normalMatrix;
     float4 materialAmbient;
     float4 materialDiffuse;
     float4 materialSpecular;
@@ -66,8 +67,7 @@ VSOutput VSMain(VSInput input)
     float4 wpos = mul(float4(input.pos, 1.0f), model);
     output.worldPos = wpos.xyz;
 
-    float3x3 nmat = (float3x3)transpose(inverse(model));
-    output.normal = mul(input.normal, nmat);
+    output.normal = mul(float4(input.normal, 0.0f), normalMatrix).xyz;
 
     output.pos = mul(wpos, view);
     output.pos = mul(output.pos, projection);
@@ -126,6 +126,36 @@ VSOutput VSMain(VSInput input)
 float4 PSMain(VSOutput input) : SV_TARGET
 {
     return float4(input.color, alpha.x);
+}
+)";
+
+static const char* kUIShader = R"(
+cbuffer UIConstants : register(b0)
+{
+    matrix projection;
+};
+
+struct VSInput {
+    float2 pos : POSITION;
+    float4 color : COLOR0;
+};
+
+struct VSOutput {
+    float4 pos : SV_POSITION;
+    float4 color : COLOR0;
+};
+
+VSOutput VSMain(VSInput input)
+{
+    VSOutput output;
+    output.pos = mul(float4(input.pos, 0.0f, 1.0f), projection);
+    output.color = input.color;
+    return output;
+}
+
+float4 PSMain(VSOutput input) : SV_TARGET
+{
+    return input.color;
 }
 )";
 
@@ -191,16 +221,23 @@ void DirectX11Renderer::Shutdown()
 {
     m_MeshResources.clear();
     m_GridVB.Reset();
+    m_UIVB.Reset();
 
     m_BlendState.Reset();
+    m_UIDepthState.Reset();
+    m_RasterNoCull.Reset();
     m_DepthState.Reset();
     m_RasterWire.Reset();
     m_RasterSolid.Reset();
 
+    m_UICB.Reset();
     m_LineCB.Reset();
     m_ObjectCB.Reset();
     m_SceneCB.Reset();
 
+    m_UILayout.Reset();
+    m_UIPS.Reset();
+    m_UIVS.Reset();
     m_LineLayout.Reset();
     m_LinePS.Reset();
     m_LineVS.Reset();
@@ -290,6 +327,7 @@ void DirectX11Renderer::RenderScene(std::shared_ptr<Scene> scene, std::shared_pt
 
             ObjectConstants oc{};
             oc.model = glm::transpose(entity->GetTransform());
+            oc.normalMatrix = glm::transpose(glm::inverse(entity->GetTransform()));
 
             for (auto& mesh : entity->GetModel()->GetMeshes()) {
                 if (mesh->material) {
@@ -322,6 +360,7 @@ void DirectX11Renderer::RenderScene(std::shared_ptr<Scene> scene, std::shared_pt
 
             ObjectConstants oc{};
             oc.model = glm::transpose(entity->GetTransform());
+            oc.normalMatrix = glm::transpose(glm::inverse(entity->GetTransform()));
             const glm::vec3 color = entity->IsSelected() ? settings.wireColor : glm::vec3(0.6f);
             oc.materialAmbient = glm::vec4(color, 1.0f);
             oc.materialDiffuse = glm::vec4(color, 1.0f);
@@ -414,6 +453,126 @@ UIRendererContext DirectX11Renderer::GetUIContext() const
     ctx.device = m_Device.Get();
     ctx.deviceContext = m_Context.Get();
     return ctx;
+}
+
+void DirectX11Renderer::RenderBlenderUI(const BlenderDrawList& drawList)
+{
+    if (drawList.commands.empty()) {
+        return;
+    }
+
+    auto appendQuad = [](std::vector<UIVertex>& verts, const BlenderRect& rect, const BlenderColor& color) {
+        const float x0 = rect.x;
+        const float y0 = rect.y;
+        const float x1 = rect.x + rect.width;
+        const float y1 = rect.y + rect.height;
+        const glm::vec4 c(color.r, color.g, color.b, color.a);
+        verts.push_back({glm::vec2(x0, y0), c});
+        verts.push_back({glm::vec2(x1, y0), c});
+        verts.push_back({glm::vec2(x1, y1), c});
+        verts.push_back({glm::vec2(x0, y0), c});
+        verts.push_back({glm::vec2(x1, y1), c});
+        verts.push_back({glm::vec2(x0, y1), c});
+    };
+
+    std::vector<UIVertex> triVerts;
+    std::vector<UIVertex> lineVerts;
+
+    for (const BlenderDrawCommand& cmd : drawList.commands) {
+        if (cmd.type == BlenderDrawCommandType::FillRect) {
+            appendQuad(triVerts, cmd.rect, cmd.color);
+        } else if (cmd.type == BlenderDrawCommandType::StrokeRect) {
+            const float x0 = cmd.rect.x;
+            const float y0 = cmd.rect.y;
+            const float x1 = cmd.rect.x + cmd.rect.width;
+            const float y1 = cmd.rect.y + cmd.rect.height;
+            const glm::vec4 c(cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a);
+            lineVerts.push_back({glm::vec2(x0, y0), c});
+            lineVerts.push_back({glm::vec2(x1, y0), c});
+            lineVerts.push_back({glm::vec2(x1, y0), c});
+            lineVerts.push_back({glm::vec2(x1, y1), c});
+            lineVerts.push_back({glm::vec2(x1, y1), c});
+            lineVerts.push_back({glm::vec2(x0, y1), c});
+            lineVerts.push_back({glm::vec2(x0, y1), c});
+            lineVerts.push_back({glm::vec2(x0, y0), c});
+        } else if (cmd.type == BlenderDrawCommandType::Text) {
+            BlenderRect textBar {
+                cmd.rect.x,
+                cmd.rect.y,
+                static_cast<float>(cmd.text.size()) * 6.5f,
+                cmd.fontSize * 0.65f
+            };
+            appendQuad(triVerts, textBar, {cmd.color.r, cmd.color.g, cmd.color.b, 0.22f});
+        }
+    }
+
+    const uint32_t totalVertexCount = static_cast<uint32_t>(triVerts.size() + lineVerts.size());
+    if (totalVertexCount == 0) {
+        return;
+    }
+
+    EnsureUIBufferSize(totalVertexCount * static_cast<uint32_t>(sizeof(UIVertex)));
+    if (!m_UIVB) {
+        return;
+    }
+
+    D3D11_MAPPED_SUBRESOURCE mapped{};
+    if (FAILED(m_Context->Map(m_UIVB.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+        return;
+    }
+
+    UIVertex* dst = static_cast<UIVertex*>(mapped.pData);
+    const uint32_t triVertexCount = static_cast<uint32_t>(triVerts.size());
+    const uint32_t lineVertexCount = static_cast<uint32_t>(lineVerts.size());
+
+    if (triVertexCount > 0) {
+        memcpy(dst, triVerts.data(), triVertexCount * sizeof(UIVertex));
+        dst += triVertexCount;
+    }
+    if (lineVertexCount > 0) {
+        memcpy(dst, lineVerts.data(), lineVertexCount * sizeof(UIVertex));
+    }
+    m_Context->Unmap(m_UIVB.Get(), 0);
+
+    UIConstants constants{};
+    constants.projection = glm::transpose(glm::ortho(
+        0.0f,
+        static_cast<float>(m_ViewportWidth),
+        static_cast<float>(m_ViewportHeight),
+        0.0f));
+    m_Context->UpdateSubresource(m_UICB.Get(), 0, nullptr, &constants, 0, 0);
+
+    ID3D11RenderTargetView* rtvs[] = {m_RTV.Get()};
+    m_Context->OMSetRenderTargets(1, rtvs, m_DSV.Get());
+
+    const float blendFactor[4] = {0, 0, 0, 0};
+    m_Context->OMSetBlendState(m_BlendState.Get(), blendFactor, 0xFFFFFFFF);
+    m_Context->OMSetDepthStencilState(m_UIDepthState.Get(), 0);
+    m_Context->RSSetState(m_RasterNoCull.Get());
+
+    UINT stride = sizeof(UIVertex);
+    UINT offset = 0;
+    ID3D11Buffer* vb = m_UIVB.Get();
+    ID3D11Buffer* cb[] = {m_UICB.Get()};
+
+    m_Context->IASetInputLayout(m_UILayout.Get());
+    m_Context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
+    m_Context->VSSetShader(m_UIVS.Get(), nullptr, 0);
+    m_Context->PSSetShader(m_UIPS.Get(), nullptr, 0);
+    m_Context->VSSetConstantBuffers(0, 1, cb);
+
+    if (triVertexCount > 0) {
+        m_Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        m_Context->Draw(triVertexCount, 0);
+    }
+
+    if (lineVertexCount > 0) {
+        m_Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+        m_Context->Draw(lineVertexCount, triVertexCount);
+    }
+
+    m_Context->OMSetDepthStencilState(m_DepthState.Get(), 0);
+    m_Context->RSSetState(m_RasterSolid.Get());
 }
 
 bool DirectX11Renderer::CreateDeviceAndSwapChain(HWND hwnd)
@@ -544,6 +703,30 @@ bool DirectX11Renderer::CreateShaders()
     hr = m_Device->CreateInputLayout(lineLayout, static_cast<UINT>(std::size(lineLayout)),
                                      vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(),
                                      m_LineLayout.GetAddressOf());
+    if (FAILED(hr)) return false;
+
+    vsBlob.Reset();
+    psBlob.Reset();
+
+    if (!CompileShader(kUIShader, "VSMain", "vs_5_0", vsBlob)) return false;
+    if (!CompileShader(kUIShader, "PSMain", "ps_5_0", psBlob)) return false;
+
+    hr = m_Device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(),
+                                      nullptr, m_UIVS.GetAddressOf());
+    if (FAILED(hr)) return false;
+
+    hr = m_Device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(),
+                                     nullptr, m_UIPS.GetAddressOf());
+    if (FAILED(hr)) return false;
+
+    D3D11_INPUT_ELEMENT_DESC uiLayout[] = {
+        {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0}
+    };
+
+    hr = m_Device->CreateInputLayout(uiLayout, static_cast<UINT>(std::size(uiLayout)),
+                                     vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(),
+                                     m_UILayout.GetAddressOf());
     return SUCCEEDED(hr);
 }
 
@@ -558,11 +741,19 @@ bool DirectX11Renderer::CreateStates()
     rs.FillMode = D3D11_FILL_WIREFRAME;
     if (FAILED(m_Device->CreateRasterizerState(&rs, m_RasterWire.GetAddressOf()))) return false;
 
+    rs.FillMode = D3D11_FILL_SOLID;
+    if (FAILED(m_Device->CreateRasterizerState(&rs, m_RasterNoCull.GetAddressOf()))) return false;
+
     D3D11_DEPTH_STENCIL_DESC ds{};
     ds.DepthEnable = TRUE;
     ds.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
     ds.DepthFunc = D3D11_COMPARISON_LESS;
     if (FAILED(m_Device->CreateDepthStencilState(&ds, m_DepthState.GetAddressOf()))) return false;
+
+    ds.DepthEnable = FALSE;
+    ds.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+    ds.DepthFunc = D3D11_COMPARISON_ALWAYS;
+    if (FAILED(m_Device->CreateDepthStencilState(&ds, m_UIDepthState.GetAddressOf()))) return false;
 
     D3D11_BLEND_DESC bd{};
     bd.RenderTarget[0].BlendEnable = TRUE;
@@ -590,7 +781,10 @@ bool DirectX11Renderer::CreateConstantBuffers()
     if (FAILED(m_Device->CreateBuffer(&bd, nullptr, m_ObjectCB.GetAddressOf()))) return false;
 
     bd.ByteWidth = sizeof(LineConstants);
-    return SUCCEEDED(m_Device->CreateBuffer(&bd, nullptr, m_LineCB.GetAddressOf()));
+    if (FAILED(m_Device->CreateBuffer(&bd, nullptr, m_LineCB.GetAddressOf()))) return false;
+
+    bd.ByteWidth = sizeof(UIConstants);
+    return SUCCEEDED(m_Device->CreateBuffer(&bd, nullptr, m_UICB.GetAddressOf()));
 }
 
 void DirectX11Renderer::EnsureMeshResources(const std::shared_ptr<Mesh>& mesh)
@@ -734,6 +928,31 @@ void DirectX11Renderer::RenderGridAndAxes(const glm::mat4& view, const glm::mat4
     ID3D11Buffer* vb = m_GridVB.Get();
     m_Context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
     m_Context->Draw(m_GridVertexCount, 0);
+}
+
+void DirectX11Renderer::EnsureUIBufferSize(uint32_t requiredBytes)
+{
+    if (requiredBytes == 0) {
+        return;
+    }
+
+    if (m_UIVB && requiredBytes <= m_UIVBSizeBytes) {
+        return;
+    }
+
+    D3D11_BUFFER_DESC bd{};
+    bd.Usage = D3D11_USAGE_DYNAMIC;
+    bd.ByteWidth = requiredBytes;
+    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+    m_UIVB.Reset();
+    if (FAILED(m_Device->CreateBuffer(&bd, nullptr, m_UIVB.GetAddressOf()))) {
+        m_UIVBSizeBytes = 0;
+        return;
+    }
+
+    m_UIVBSizeBytes = requiredBytes;
 }
 
 void DirectX11Renderer::RecreateSwapChainResources()

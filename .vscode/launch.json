@@ -5,10 +5,19 @@
             "name": "Debug metaphysics (MSVC)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build_vscode/bin/metaphysics.exe",
+            "program": "${workspaceFolder}/build_win_dx11/bin/Debug/metaphysics.exe",
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
-            "environment": [],
+            "environment": [
+                {
+                    "name": "METAPHYSICS_RENDERER",
+                    "value": "dx11"
+                },
+                {
+                    "name": "METAPHYSICS_UI",
+                    "value": "imgui"
+                }
+            ],
             "externalConsole": false,
             "preLaunchTask": "CMake: Build (VSCode)"
         },
@@ -22,6 +31,16 @@
             "MIMode": "gdb",
             "miDebuggerPath": "D:/msys64/mingw64/bin/gdb.exe",
             "externalConsole": false,
+            "environment": [
+                {
+                    "name": "METAPHYSICS_RENDERER",
+                    "value": "dx11"
+                },
+                {
+                    "name": "METAPHYSICS_UI",
+                    "value": "imgui"
+                }
+            ],
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

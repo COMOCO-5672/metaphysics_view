@@ -38,6 +38,8 @@ public:
                                        int mouseX, int mouseY,
                                        int screenWidth, int screenHeight) override;
 
+    void RenderBlenderUI(const BlenderDrawList& drawList) override;
+
     UIRendererContext GetUIContext() const override;
 
 private:
@@ -63,6 +65,7 @@ private:
 
     struct ObjectConstants {
         glm::mat4 model;
+        glm::mat4 normalMatrix;
         glm::vec4 materialAmbient;
         glm::vec4 materialDiffuse;
         glm::vec4 materialSpecular;
@@ -74,6 +77,15 @@ private:
         glm::mat4 view;
         glm::mat4 projection;
         glm::vec4 alpha;
+    };
+
+    struct UIVertex {
+        glm::vec2 pos;
+        glm::vec4 color;
+    };
+
+    struct UIConstants {
+        glm::mat4 projection;
     };
 
 private:
@@ -90,6 +102,7 @@ private:
     void BuildGrid(const RenderSettings& settings);
     void RenderGridAndAxes(const glm::mat4& view, const glm::mat4& projection,
                            const RenderSettings& settings);
+    void EnsureUIBufferSize(uint32_t requiredBytes);
 
     bool RayIntersectsTriangle(const glm::vec3& rayOrigin, const glm::vec3& rayDir,
                                const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
@@ -113,19 +126,27 @@ private:
     Microsoft::WRL::ComPtr<ID3D11VertexShader> m_LineVS;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_LinePS;
     Microsoft::WRL::ComPtr<ID3D11InputLayout> m_LineLayout;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader> m_UIVS;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_UIPS;
+    Microsoft::WRL::ComPtr<ID3D11InputLayout> m_UILayout;
 
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_SceneCB;
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_ObjectCB;
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_LineCB;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_UICB;
 
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_RasterSolid;
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_RasterWire;
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_RasterNoCull;
     Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_DepthState;
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_UIDepthState;
     Microsoft::WRL::ComPtr<ID3D11BlendState> m_BlendState;
 
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_GridVB;
     uint32_t m_GridVertexCount = 0;
     uint32_t m_GridVBSizeBytes = 0;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_UIVB;
+    uint32_t m_UIVBSizeBytes = 0;
 
     std::unordered_map<const Mesh*, MeshGpuResources> m_MeshResources;
 

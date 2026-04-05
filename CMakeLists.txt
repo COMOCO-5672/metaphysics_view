@@ -87,7 +87,7 @@ elseif(WIN32)
 endif()
 
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
+    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8 /FS)
 endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE 

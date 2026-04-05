@@ -137,6 +137,33 @@ void main()
 }
 )";
 
+static const char* uiVertexShader = R"(
+#version 330 core
+layout (location = 0) in vec2 aPos;
+layout (location = 1) in vec4 aColor;
+
+out vec4 vColor;
+
+uniform mat4 projection;
+
+void main()
+{
+    vColor = aColor;
+    gl_Position = projection * vec4(aPos, 0.0, 1.0);
+}
+)";
+
+static const char* uiFragmentShader = R"(
+#version 330 core
+in vec4 vColor;
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = vColor;
+}
+)";
+
 // ============================================================
 // OpenGLRenderer implementation
 // ============================================================
@@ -177,6 +204,12 @@ bool OpenGLRenderer::Init(void* /*window*/)
         return false;
     }
 
+    m_UIShader = std::make_unique<Shader>();
+    if (!m_UIShader->LoadFromSource(uiVertexShader, uiFragmentShader)) {
+        std::cerr << "Failed to load UI shader" << std::endl;
+        return false;
+    }
+
     // X/Y/Z for RenderAxes: Y always drawn here; X/Z only when grid is off (otherwise grid colors center lines).
     float axisLen = 50.0f;
     float axesData[] = {
@@ -213,11 +246,14 @@ void OpenGLRenderer::Shutdown()
     m_Shader.reset();
     m_WireframeShader.reset();
     m_GridShader.reset();
+    m_UIShader.reset();
 
     if (m_GridVAO) { glDeleteVertexArrays(1, &m_GridVAO); m_GridVAO = 0; }
     if (m_GridVBO) { glDeleteBuffers(1, &m_GridVBO); m_GridVBO = 0; }
     if (m_AxesVAO) { glDeleteVertexArrays(1, &m_AxesVAO); m_AxesVAO = 0; }
     if (m_AxesVBO) { glDeleteBuffers(1, &m_AxesVBO); m_AxesVBO = 0; }
+    if (m_UIVAO) { glDeleteVertexArrays(1, &m_UIVAO); m_UIVAO = 0; }
+    if (m_UIVBO) { glDeleteBuffers(1, &m_UIVBO); m_UIVBO = 0; }
 }
 
 void OpenGLRenderer::BeginFrame(const glm::vec4& clearColor)
@@ -235,6 +271,23 @@ void OpenGLRenderer::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_
     glViewport(x, y, width, height);
     m_ViewportWidth = width;
     m_ViewportHeight = height;
+}
+
+void OpenGLRenderer::EnsureUIResources()
+{
+    if (m_UIVAO != 0 && m_UIVBO != 0) {
+        return;
+    }
+
+    glGenVertexArrays(1, &m_UIVAO);
+    glGenBuffers(1, &m_UIVBO);
+    glBindVertexArray(m_UIVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_UIVBO);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(2 * sizeof(float)));
+    glBindVertexArray(0);
 }
 
 // -------------------------------------------------------
@@ -544,6 +597,85 @@ std::shared_ptr<Entity> OpenGLRenderer::PickEntity(std::shared_ptr<Scene> scene,
     }
 
     return closestEntity;
+}
+
+void OpenGLRenderer::RenderBlenderUI(const BlenderDrawList& drawList)
+{
+    if (drawList.commands.empty()) {
+        return;
+    }
+
+    EnsureUIResources();
+
+    glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(m_ViewportWidth),
+                                      static_cast<float>(m_ViewportHeight), 0.0f);
+
+    auto appendQuad = [](std::vector<float>& verts, const BlenderRect& rect, const BlenderColor& color) {
+        const float x0 = rect.x;
+        const float y0 = rect.y;
+        const float x1 = rect.x + rect.width;
+        const float y1 = rect.y + rect.height;
+        const float c[4] = {color.r, color.g, color.b, color.a};
+
+        const float quad[] = {
+            x0, y0, c[0], c[1], c[2], c[3],
+            x1, y0, c[0], c[1], c[2], c[3],
+            x1, y1, c[0], c[1], c[2], c[3],
+            x0, y0, c[0], c[1], c[2], c[3],
+            x1, y1, c[0], c[1], c[2], c[3],
+            x0, y1, c[0], c[1], c[2], c[3]
+        };
+        verts.insert(verts.end(), std::begin(quad), std::end(quad));
+    };
+
+    std::vector<float> triVerts;
+    std::vector<float> lineVerts;
+
+    for (const BlenderDrawCommand& cmd : drawList.commands) {
+        if (cmd.type == BlenderDrawCommandType::FillRect) {
+            appendQuad(triVerts, cmd.rect, cmd.color);
+        } else if (cmd.type == BlenderDrawCommandType::StrokeRect) {
+            const float x0 = cmd.rect.x;
+            const float y0 = cmd.rect.y;
+            const float x1 = cmd.rect.x + cmd.rect.width;
+            const float y1 = cmd.rect.y + cmd.rect.height;
+            const float c[4] = {cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a};
+            const float lines[] = {
+                x0, y0, c[0], c[1], c[2], c[3], x1, y0, c[0], c[1], c[2], c[3],
+                x1, y0, c[0], c[1], c[2], c[3], x1, y1, c[0], c[1], c[2], c[3],
+                x1, y1, c[0], c[1], c[2], c[3], x0, y1, c[0], c[1], c[2], c[3],
+                x0, y1, c[0], c[1], c[2], c[3], x0, y0, c[0], c[1], c[2], c[3]
+            };
+            lineVerts.insert(lineVerts.end(), std::begin(lines), std::end(lines));
+        } else if (cmd.type == BlenderDrawCommandType::Text) {
+            BlenderRect textBar {cmd.rect.x, cmd.rect.y, static_cast<float>(cmd.text.size()) * 6.5f,
+                                 cmd.fontSize * 0.65f};
+            appendQuad(triVerts, textBar, {cmd.color.r, cmd.color.g, cmd.color.b, 0.22f});
+        }
+    }
+
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    m_UIShader->Use();
+    m_UIShader->SetMat4("projection", projection);
+    glBindVertexArray(m_UIVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_UIVBO);
+
+    if (!triVerts.empty()) {
+        glBufferData(GL_ARRAY_BUFFER, triVerts.size() * sizeof(float), triVerts.data(), GL_DYNAMIC_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(triVerts.size() / 6));
+    }
+
+    if (!lineVerts.empty()) {
+        glBufferData(GL_ARRAY_BUFFER, lineVerts.size() * sizeof(float), lineVerts.data(), GL_DYNAMIC_DRAW);
+        glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVerts.size() / 6));
+    }
+
+    glBindVertexArray(0);
+    m_UIShader->Unbind();
+    glEnable(GL_DEPTH_TEST);
 }
 
 bool OpenGLRenderer::RayIntersectsTriangle(const glm::vec3& rayOrigin, const glm::vec3& rayDir,

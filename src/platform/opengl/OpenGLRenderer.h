@@ -29,6 +29,8 @@ public:
                                        int mouseX, int mouseY,
                                        int screenWidth, int screenHeight) override;
 
+    void RenderBlenderUI(const BlenderDrawList& drawList) override;
+
     UIRendererContext GetUIContext() const override;
 
 private:
@@ -40,6 +42,7 @@ private:
     void RenderGrid(const glm::mat4& view, const glm::mat4& projection,
                     float size, float spacing, bool colorNegativeAxes, bool showAxisX, bool showAxisZ);
     void RenderAxes(const glm::mat4& view, const glm::mat4& projection, const RenderSettings& settings);
+    void EnsureUIResources();
 
     bool RayIntersectsTriangle(const glm::vec3& rayOrigin, const glm::vec3& rayDir,
                               const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
@@ -49,6 +52,7 @@ private:
     std::unique_ptr<Shader> m_Shader;
     std::unique_ptr<Shader> m_WireframeShader;
     std::unique_ptr<Shader> m_GridShader;
+    std::unique_ptr<Shader> m_UIShader;
 
     uint32_t m_GridVAO = 0;
     uint32_t m_GridVBO = 0;
@@ -61,6 +65,8 @@ private:
 
     uint32_t m_AxesVAO = 0;
     uint32_t m_AxesVBO = 0;
+    uint32_t m_UIVAO = 0;
+    uint32_t m_UIVBO = 0;
 
     uint32_t m_ViewportWidth;
     uint32_t m_ViewportHeight;

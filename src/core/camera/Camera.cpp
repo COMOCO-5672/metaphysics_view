@@ -80,6 +80,23 @@ void Camera::ProcessMouseScroll(float yoffset)
         m_Zoom = 45.0f;
 }
 
+void Camera::LookAt(const glm::vec3& target)
+{
+    glm::vec3 dir = glm::normalize(target - m_Position);
+    if (glm::length(target - m_Position) < 1e-5f) {
+        return;
+    }
+
+    m_Pitch = glm::degrees(asin(glm::clamp(dir.y, -1.0f, 1.0f)));
+    m_Yaw = glm::degrees(atan2(dir.z, dir.x));
+    UpdateCameraVectors();
+}
+
+void Camera::SetZoom(float zoom)
+{
+    m_Zoom = glm::clamp(zoom, 1.0f, 45.0f);
+}
+
 void Camera::UpdateCameraVectors()
 {
     glm::vec3 front;

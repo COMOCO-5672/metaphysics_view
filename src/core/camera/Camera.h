@@ -42,6 +42,8 @@ public:
 
     // Setters
     void SetPosition(const glm::vec3& position) { m_Position = position; }
+    void LookAt(const glm::vec3& target);
+    void SetZoom(float zoom);
     void SetNearFar(float nearPlane, float farPlane) { m_Near = nearPlane; m_Far = farPlane; }
 
 private:

@@ -2,6 +2,7 @@
 
 #include "RenderAPI.h"
 #include "RenderSettings.h"
+#include "../../ui/blender_ui/BlenderUI.h"
 #include "../scene/Scene.h"
 #include "../camera/Camera.h"
 #include <memory>
@@ -33,6 +34,8 @@ public:
                                                std::shared_ptr<Camera> camera,
                                                int mouseX, int mouseY,
                                                int screenWidth, int screenHeight) = 0;
+
+    virtual void RenderBlenderUI(const BlenderDrawList& drawList) = 0;
 
     virtual UIRendererContext GetUIContext() const = 0;
 };

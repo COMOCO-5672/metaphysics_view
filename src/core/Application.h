@@ -8,6 +8,7 @@
 #include "../core/camera/Camera.h"
 #include "../core/renderer/ISceneRenderer.h"
 #include "../platform/opengl/OpenGLRenderer.h"
+#include "../ui/blender_ui/BlenderUI.h"
 #include "../ui/imgui_layer/ImGuiLayer.h"
 #ifdef TARGET_WINDOWS
 #include "../platform/directx/DirectX11Renderer.h"
@@ -32,6 +33,8 @@ private:
     void Render();
 
     void LoadModel(const std::string& path);
+    void FocusCameraOnSelection();
+    void LoadStartupModel();
 
     static void FramebufferSizeCallback(GLFWwindow* window, int width, int height);
     static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
@@ -44,6 +47,7 @@ private:
 
     std::unique_ptr<ISceneRenderer> m_Renderer;
     std::unique_ptr<ImGuiLayer> m_ImGuiLayer;
+    std::unique_ptr<BlenderUI> m_BlenderUI;
 
     AppState m_AppState;
 
