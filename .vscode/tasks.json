@@ -2,35 +2,89 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "CMake Configure",
+            "label": "CMake: Configure (VSCode)",
             "type": "shell",
-            "command": "cmake",
-            "args": [
-                "-G",
-                "MinGW Makefiles",
-                ".."
-            ],
+            "command": "if (!(Test-Path \"build_vscode\")) { New-Item -ItemType Directory -Path \"build_vscode\" | Out-Null }; if (Get-Command ninja -ErrorAction SilentlyContinue) { cmake -S . -B build_vscode -G Ninja -DCMAKE_BUILD_TYPE=Debug } else { cmake -S . -B build_vscode -A x64 }",
             "options": {
-                "cwd": "${workspaceFolder}/build"
-            },
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "CMake Build",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build",
-                "."
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/build"
+                "cwd": "${workspaceFolder}",
+                "shell": {
+                    "executable": "powershell",
+                    "args": [
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-Command"
+                    ]
+                }
             },
             "group": "build",
             "problemMatcher": [
+                "$msCompile",
                 "$gcc"
             ]
+        },
+        {
+            "label": "CMake: Build (VSCode)",
+            "type": "shell",
+            "command": "if (!(Test-Path \"build_vscode\")) { throw \"build_vscode does not exist. Run CMake: Configure first.\" }; if (Test-Path \"build_vscode\\build.ninja\") { cmake --build build_vscode } else { cmake --build build_vscode --config Debug }",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "shell": {
+                    "executable": "powershell",
+                    "args": [
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-Command"
+                    ]
+                }
+            },
+            "dependsOn": "CMake: Configure (VSCode)",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$msCompile",
+                "$gcc"
+            ]
+        },
+        {
+            "label": "CMake: Clean (VSCode)",
+            "type": "shell",
+            "command": "if (Test-Path \"build_vscode\") { Remove-Item -LiteralPath \"build_vscode\" -Recurse -Force }",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "shell": {
+                    "executable": "powershell",
+                    "args": [
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-Command"
+                    ]
+                }
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run: metaphysics (VSCode)",
+            "type": "shell",
+            "command": "$candidates = @(\"build_vscode\\bin\\metaphysics.exe\",\"build_vscode\\bin\\Debug\\metaphysics.exe\",\"build_vscode\\bin\\Release\\metaphysics.exe\"); $exe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1; if (-not $exe) { throw \"metaphysics.exe not found. Run CMake: Build first.\" }; $exeDir = Split-Path $exe -Parent; Push-Location $exeDir; try { .\\metaphysics.exe } finally { Pop-Location }",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "shell": {
+                    "executable": "powershell",
+                    "args": [
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-Command"
+                    ]
+                }
+            },
+            "dependsOn": "CMake: Build (VSCode)",
+            "problemMatcher": []
         }
     ]
 }

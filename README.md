@@ -54,3 +54,30 @@ cmake --build .
 
 - [QUICKSTART.md](QUICKSTART.md) — 运行与操作说明
 - [metaphysics_deps/README.md](metaphysics_deps/README.md) — 第三方依赖目录说明
+## VS Code Workflow
+
+If you prefer VS Code over the full Visual Studio IDE, use the workspace tasks already included in `.vscode/`.
+
+Recommended extensions:
+
+- `ms-vscode.cpptools`
+- `ms-vscode.cmake-tools`
+
+Available VS Code tasks:
+
+- `CMake: Configure (VSCode)`
+- `CMake: Build (VSCode)`
+- `Run: metaphysics (VSCode)`
+- `CMake: Clean (VSCode)`
+
+Notes:
+
+- VS Code builds use `build_vscode/`
+- If `ninja` is installed, the configure task prefers `Ninja`
+- Otherwise it falls back to the system default CMake generator
+- You still need a C++ toolchain, but you do not need the full Visual Studio IDE
+
+Available debug profiles:
+
+- `Debug metaphysics (MSVC)`
+- `Debug metaphysics (Ninja/Single Config)`

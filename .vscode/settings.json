@@ -1,9 +1,10 @@
 {
-    "terminal.integrated.shell.windows": "D:\\msys64\\usr\\bin\\bash.exe",
-    "terminal.integrated.env.windows": {
-      "PATH": "D:\\msys64\\mingw64\\bin;D:\\msys64\\usr\\bin;${env:PATH}"
-    },
-    "makefile.configureOnOpen": true,
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "makefile.configureOnOpen": false,
+    "cmake.configureOnOpen": false,
+    "cmake.buildDirectory": "${workspaceFolder}/build_vscode",
+    "cmake.useCMakePresets": "never",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "files.associations": {
         "*.html": "html",
         "*.wsd": "plantuml",
@@ -105,5 +106,4 @@
         "xtree": "cpp",
         "xutility": "cpp"
     }
-  }
-  
+}
