@@ -32,8 +32,7 @@ bool ImGuiLayer::Init(const ImGuiInitInfo& initInfo)
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    ImGui::GetIO();
 
     ApplyBlenderStyle();
 
@@ -151,40 +150,19 @@ void ImGuiLayer::ApplyBlenderStyle()
     colors[ImGuiCol_SliderGrabActive] = ImVec4(0.459f, 0.663f, 1.0f, 1.0f);
 
     colors[ImGuiCol_Separator] = ImVec4(0.278f, 0.286f, 0.302f, 1.0f);
-    colors[ImGuiCol_DockingPreview] = ImVec4(0.345f, 0.561f, 0.922f, 0.55f);
-    colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.102f, 0.106f, 0.114f, 1.0f);
 }
 
 void ImGuiLayer::BuildBlenderDockLayout()
 {
-    ImGuiID dockspaceID = ImGui::GetID("MainDockspace");
-    ImGui::DockBuilderRemoveNode(dockspaceID);
-    ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_DockSpace);
-    ImGui::DockBuilderSetNodeSize(dockspaceID, ImGui::GetMainViewport()->Size);
-
-    ImGuiID dockMain = dockspaceID;
-    ImGuiID dockLeft = ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, 0.20f, nullptr, &dockMain);
-    ImGuiID dockRight = ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.28f, nullptr, &dockMain);
-    ImGuiID dockBottom = ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Down, 0.23f, nullptr, &dockMain);
-
-    ImGui::DockBuilderDockWindow("Scene Hierarchy", dockLeft);
-    ImGui::DockBuilderDockWindow("Properties", dockRight);
-    ImGui::DockBuilderDockWindow("Render Settings", dockRight);
-    ImGui::DockBuilderDockWindow("Viewport", dockMain);
-    ImGui::DockBuilderDockWindow("Status", dockBottom);
-
-    ImGui::DockBuilderFinish(dockspaceID);
+    // This repository uses the bundled upstream ImGui without docking extensions.
+    // Keep the function as a no-op so the old ImGui path still compiles.
     m_DockLayoutBuilt = true;
 }
 
 void ImGuiLayer::RenderUI(AppState& state)
 {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->Pos);
-    ImGui::SetNextWindowSize(viewport->Size);
-    ImGui::SetNextWindowViewport(viewport->ID);
-
-    ImGuiWindowFlags hostFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+    ImGuiIO& io = ImGui::GetIO();
+    ImGuiWindowFlags hostFlags = ImGuiWindowFlags_MenuBar;
     hostFlags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse;
     hostFlags |= ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
     hostFlags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
@@ -193,14 +171,12 @@ void ImGuiLayer::RenderUI(AppState& state)
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+    ImGui::SetNextWindowSize(io.DisplaySize);
     ImGui::Begin("BlenderLikeRoot", nullptr, hostFlags);
     ImGui::PopStyleVar(3);
 
     RenderTopMenuBar(state);
-
-    ImGuiID dockspaceID = ImGui::GetID("MainDockspace");
-    ImGuiDockNodeFlags dockFlags = ImGuiDockNodeFlags_None;
-    ImGui::DockSpace(dockspaceID, ImVec2(0.0f, -28.0f), dockFlags);
 
     if (!m_DockLayoutBuilt) {
         BuildBlenderDockLayout();

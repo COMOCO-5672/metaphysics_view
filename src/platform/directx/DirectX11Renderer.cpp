@@ -2,6 +2,13 @@
 
 #ifdef TARGET_WINDOWS
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
@@ -376,7 +383,7 @@ std::shared_ptr<Entity> DirectX11Renderer::PickEntity(std::shared_ptr<Scene> sce
 
     glm::vec3 rayOrigin = camera->GetPosition();
     std::shared_ptr<Entity> closestEntity = nullptr;
-    float closestDistance = std::numeric_limits<float>::max();
+    float closestDistance = (std::numeric_limits<float>::max)();
 
     for (const auto& entity : scene->GetEntities()) {
         if (!entity->IsVisible() || !entity->GetModel()) continue;
