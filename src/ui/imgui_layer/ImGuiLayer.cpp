@@ -198,6 +198,13 @@ void ImGuiLayer::RenderUI(AppState& state)
     ImGui::Separator();
     ImGui::Text("Renderer: %s", m_RendererAPI == RendererAPIType::DirectX11 ? "DirectX11" : "OpenGL");
     ImGui::Text("Use mouse drag + WASDQE to navigate");
+    if (state.selectedEntity) {
+        ImGui::Text("Selected: %s", state.selectedEntity->GetName().c_str());
+        ImGui::TextUnformatted("Press F to focus the selected object");
+    } else {
+        ImGui::TextUnformatted("No selection. Click an object to select it.");
+    }
+    ImGui::Text("Scene objects: %zu", state.currentScene ? state.currentScene->GetEntities().size() : 0);
     ImGui::End();
 }
 
@@ -438,6 +445,10 @@ void ImGuiLayer::RenderModelLoader(AppState& state)
         m_OnModelLoad("models/cube.obj");
         state.showModelLoader = false;
     }
+    if (ImGui::Button("Quick Load: Gundam Part") && m_OnModelLoad) {
+        m_OnModelLoad("models/gundam_rx78/gundam_rx78_description/meshes/rx78_object_005-lib.dae");
+        state.showModelLoader = false;
+    }
 
     ImGui::End();
 }
@@ -455,6 +466,10 @@ void ImGuiLayer::RenderStatusBar(AppState& state)
     ImGui::Text("| Scene Entities: %zu", state.currentScene ? state.currentScene->GetEntities().size() : 0);
     ImGui::SameLine();
     ImGui::Text("| Resolution: %dx%d", state.screenWidth, state.screenHeight);
+    ImGui::SameLine();
+    ImGui::Text("| Mode: %s",
+                state.renderSettings.renderMode == RenderMode::Solid ? "Solid" :
+                state.renderSettings.renderMode == RenderMode::Wireframe ? "Wireframe" : "Solid+Wire");
 
     ImGui::EndChild();
 }

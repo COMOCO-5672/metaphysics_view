@@ -245,6 +245,7 @@ void Application::LoadModel(const std::string& path)
     if (model->LoadFromFile(path)) {
         std::string entityName = model->GetName();
         auto entity = m_AppState.currentScene->CreateEntity(entityName, model);
+        entity->SetPosition(ComputeSpawnPosition());
 
         std::cout << "Model loaded successfully: " << entityName << std::endl;
         std::cout << "  Meshes: " << model->GetMeshes().size() << std::endl;
@@ -299,6 +300,19 @@ void Application::LoadStartupModel()
     } else {
         m_AppState.showModelLoader = true;
     }
+}
+
+glm::vec3 Application::ComputeSpawnPosition() const
+{
+    if (!m_AppState.currentScene || m_AppState.currentScene->GetEntities().empty()) {
+        return glm::vec3(0.0f);
+    }
+
+    const std::size_t index = m_AppState.currentScene->GetEntities().size();
+    const float spacing = 2.5f;
+    const int column = static_cast<int>(index % 4);
+    const int row = static_cast<int>(index / 4);
+    return glm::vec3(static_cast<float>(column) * spacing, 0.0f, static_cast<float>(row) * spacing);
 }
 
 void Application::FramebufferSizeCallback(GLFWwindow* /*window*/, int width, int height)
@@ -426,6 +440,10 @@ void Application::KeyCallback(GLFWwindow* /*window*/, int key, int /*scancode*/,
 
     if (key == GLFW_KEY_O && (mods & GLFW_MOD_CONTROL)) {
         s_Instance->m_AppState.showModelLoader = true;
+    }
+
+    if (key == GLFW_KEY_F && s_Instance->m_AppState.selectedEntity) {
+        s_Instance->FocusCameraOnSelection();
     }
 
     if (key == GLFW_KEY_DELETE && s_Instance->m_AppState.selectedEntity) {

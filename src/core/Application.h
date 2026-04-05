@@ -35,6 +35,7 @@ private:
     void LoadModel(const std::string& path);
     void FocusCameraOnSelection();
     void LoadStartupModel();
+    glm::vec3 ComputeSpawnPosition() const;
 
     static void FramebufferSizeCallback(GLFWwindow* window, int width, int height);
     static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);

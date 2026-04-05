@@ -352,11 +352,16 @@ void DirectX11Renderer::RenderScene(std::shared_ptr<Scene> scene, std::shared_pt
         }
     }
 
-    if (doWire) {
+    {
         m_Context->RSSetState(m_RasterWire.Get());
 
         for (const auto& entity : scene->GetEntities()) {
             if (!entity->IsVisible() || !entity->GetModel()) continue;
+
+            const bool drawWireOverlay = doWire || entity->IsSelected();
+            if (!drawWireOverlay) {
+                continue;
+            }
 
             ObjectConstants oc{};
             oc.model = glm::transpose(entity->GetTransform());
