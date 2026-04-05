@@ -24,6 +24,8 @@ set(CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core/Application.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core/renderer/RenderAPI.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core/renderer/RenderAPI.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/renderer/RenderSettings.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/renderer/ISceneRenderer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core/camera/Camera.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core/camera/Camera.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core/material/Material.cpp
@@ -42,13 +44,20 @@ set(OPENGL_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/opengl/OpenGLRenderer.h
 )
 
+set(DIRECTX_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/directx/DirectX11Renderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/directx/DirectX11Renderer.h
+)
+
 # UI sources
 set(UI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/imgui_layer/ImGuiLayer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/imgui_layer/ImGuiLayer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/blender_ui/BlenderUI.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/blender_ui/BlenderUI.h
 )
 
-set(SOURCES ${PLATFORM_SOURCES} ${CORE_SOURCES} ${OPENGL_SOURCES} ${UI_SOURCES})
+set(SOURCES ${PLATFORM_SOURCES} ${CORE_SOURCES} ${UI_SOURCES})
 
 set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/imgui.cpp
@@ -60,7 +69,16 @@ set(IMGUI_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends/imgui_impl_glfw.cpp
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${IMGUI_SOURCES})
+if(WIN32)
+    list(APPEND IMGUI_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/framework/ui/imgui/backends/imgui_impl_dx11.cpp
+    )
+endif()
+add_executable(${PROJECT_NAME} ${SOURCES} ${OPENGL_SOURCES} ${IMGUI_SOURCES})
+
+if(WIN32)
+    target_sources(${PROJECT_NAME} PRIVATE ${DIRECTX_SOURCES})
+endif()
 
 if(APPLE)
     target_compile_definitions(${PROJECT_NAME} PRIVATE TARGET_DARWIN)
@@ -196,6 +214,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${GLFW_LIBRARY}
     assimp
 )
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE d3d11 dxgi d3dcompiler)
+endif()
 
 # 链接GLEW（如果找到）
 if(TARGET GLEW::GLEW)

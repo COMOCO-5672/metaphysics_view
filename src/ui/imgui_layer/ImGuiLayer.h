@@ -2,7 +2,8 @@
 
 #include "../../core/scene/Scene.h"
 #include "../../core/camera/Camera.h"
-#include "../../platform/opengl/OpenGLRenderer.h"
+#include "../../core/renderer/RenderAPI.h"
+#include "../../core/renderer/RenderSettings.h"
 #include <memory>
 #include <string>
 #include <functional>
@@ -27,12 +28,19 @@ struct AppState {
     int screenHeight = 600;
 };
 
+struct ImGuiInitInfo {
+    void* window = nullptr;
+    RendererAPIType rendererAPI = RendererAPIType::OpenGL;
+    void* device = nullptr;
+    void* deviceContext = nullptr;
+};
+
 class ImGuiLayer {
 public:
     ImGuiLayer();
     ~ImGuiLayer();
 
-    void Init(void* window);
+    bool Init(const ImGuiInitInfo& initInfo);
     void Shutdown();
 
     void BeginFrame();
@@ -45,15 +53,22 @@ public:
     }
 
 private:
-    void RenderMenuBar(AppState& state);
+    void ApplyBlenderStyle();
+    void BuildBlenderDockLayout();
+
+    void RenderTopMenuBar(AppState& state);
     void RenderSceneHierarchy(AppState& state);
     void RenderProperties(AppState& state);
     void RenderRenderSettings(AppState& state);
     void RenderModelLoader(AppState& state);
+    void RenderStatusBar(AppState& state);
 
 private:
     std::function<void(const std::string&)> m_OnModelLoad;
     char m_ModelPathBuffer[512];
+
+    RendererAPIType m_RendererAPI = RendererAPIType::OpenGL;
+    bool m_DockLayoutBuilt = false;
 };
 
 } // namespace Metaphysics

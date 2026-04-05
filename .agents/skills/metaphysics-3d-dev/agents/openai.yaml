@@ -1,0 +1,3 @@
+display_name: Metaphysics 3D Dev
+short_description: Work safely inside the Metaphysics 3D viewer/editor with Blender-style UI and OpenGL or DX11 rendering changes.
+default_prompt: Use this skill when modifying the Metaphysics 3D renderer project, especially for Blender-inspired editor UI, ImGui layout, OpenGL or DirectX11 backend work, scene/model interaction, and project-specific architecture decisions.

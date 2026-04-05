@@ -2,6 +2,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 namespace Metaphysics {
@@ -151,7 +152,7 @@ OpenGLRenderer::~OpenGLRenderer()
     Shutdown();
 }
 
-bool OpenGLRenderer::Init()
+bool OpenGLRenderer::Init(void* /*window*/)
 {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
@@ -198,6 +199,13 @@ bool OpenGLRenderer::Init()
     glBindVertexArray(0);
 
     return true;
+}
+
+UIRendererContext OpenGLRenderer::GetUIContext() const
+{
+    UIRendererContext ctx;
+    ctx.api = RendererAPIType::OpenGL;
+    return ctx;
 }
 
 void OpenGLRenderer::Shutdown()

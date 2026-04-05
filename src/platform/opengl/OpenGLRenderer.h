@@ -3,63 +3,33 @@
 // GLEW must be included before any OpenGL headers
 #include <GL/glew.h>
 
-#include "../../core/renderer/RenderAPI.h"
-#include "../../core/scene/Scene.h"
-#include "../../core/camera/Camera.h"
+#include "../../core/renderer/ISceneRenderer.h"
 #include "Shader.h"
 #include <memory>
 
 namespace Metaphysics {
 
-enum class RenderMode {
-    Solid,
-    Wireframe,
-    SolidWireframe
-};
-
-struct LightSettings {
-    glm::vec3 position    = glm::vec3(5.0f, 8.0f, 5.0f);
-    glm::vec3 color       = glm::vec3(1.0f, 1.0f, 1.0f);
-    float ambientStrength = 0.3f;
-    float diffuseStrength = 1.0f;
-    float specularStrength = 0.5f;
-};
-
-struct RenderSettings {
-    LightSettings light;
-    RenderMode renderMode = RenderMode::Solid;
-    glm::vec4 clearColor  = glm::vec4(0.15f, 0.15f, 0.18f, 1.0f);
-    glm::vec3 wireColor   = glm::vec3(1.0f, 0.5f, 0.0f);
-
-    bool showGrid = true;
-    bool showAxisX = true;
-    bool showAxisY = true;
-    bool showAxisZ = true;
-    /// When true, grid center X/Z lines are fully red/blue (−size..+size). When false, only +X / +Z from origin are colored; negative arms use normal grid gray.
-    bool gridColorNegativeAxes = true;
-    float gridSize = 10.0f;
-    float gridSpacing = 1.0f;
-};
-
-class OpenGLRenderer {
+class OpenGLRenderer : public ISceneRenderer {
 public:
     OpenGLRenderer();
     ~OpenGLRenderer();
 
-    bool Init();
-    void Shutdown();
+    bool Init(void* window) override;
+    void Shutdown() override;
 
-    void BeginFrame(const glm::vec4& clearColor);
-    void EndFrame();
+    void BeginFrame(const glm::vec4& clearColor) override;
+    void EndFrame() override;
     void RenderScene(std::shared_ptr<Scene> scene, std::shared_ptr<Camera> camera,
-                     const RenderSettings& settings);
+                     const RenderSettings& settings) override;
 
-    void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+    void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height) override;
 
     std::shared_ptr<Entity> PickEntity(std::shared_ptr<Scene> scene,
                                        std::shared_ptr<Camera> camera,
                                        int mouseX, int mouseY,
-                                       int screenWidth, int screenHeight);
+                                       int screenWidth, int screenHeight) override;
+
+    UIRendererContext GetUIContext() const override;
 
 private:
     void SetupMesh(std::shared_ptr<Mesh> mesh);

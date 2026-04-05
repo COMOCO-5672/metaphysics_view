@@ -1,6 +1,9 @@
 #include "Application.h"
 #include "../core/model/Model.h"
 #include "imgui.h"
+#include <cstdlib>
+#include <cctype>
+#include <cmath>
 #include <iostream>
 
 namespace Metaphysics {
@@ -8,13 +11,6 @@ namespace Metaphysics {
 Application* Application::s_Instance = nullptr;
 
 Application::Application()
-    : m_Window(nullptr)
-    , m_LastFrameTime(0.0f)
-    , m_DeltaTime(0.0f)
-    , m_MousePressed(false)
-    , m_FirstMouse(true)
-    , m_LastMouseX(0.0)
-    , m_LastMouseY(0.0)
 {
     s_Instance = this;
 }
@@ -26,76 +22,97 @@ Application::~Application()
 
 bool Application::Init()
 {
-    // 初始化GLFW
+#ifdef TARGET_WINDOWS
+    if (const char* backend = std::getenv("METAPHYSICS_RENDERER")) {
+        std::string value(backend);
+        for (char& c : value) c = static_cast<char>(::tolower(c));
+        if (value == "dx11" || value == "directx" || value == "directx11") {
+            m_ActiveAPI = RendererAPIType::DirectX11;
+        }
+    }
+#endif
+
+    RenderAPI::SetAPI(m_ActiveAPI);
+
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return false;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    if (m_ActiveAPI == RendererAPIType::OpenGL) {
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    } else {
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    }
 
-    // 创建窗口
-    m_Window = glfwCreateWindow(800, 600, "Metaphysics 3D Renderer", nullptr, nullptr);
+    m_Window = glfwCreateWindow(1280, 720, "Metaphysics 3D Renderer", nullptr, nullptr);
     if (!m_Window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return false;
     }
 
-    glfwMakeContextCurrent(m_Window);
-    glfwSwapInterval(1); // VSync
+    if (m_ActiveAPI == RendererAPIType::OpenGL) {
+        glfwMakeContextCurrent(m_Window);
+        glfwSwapInterval(1);
 
-    // 设置回调
+        if (glewInit() != GLEW_OK) {
+            std::cerr << "Failed to initialize GLEW" << std::endl;
+            return false;
+        }
+
+        m_Renderer = std::make_unique<OpenGLRenderer>();
+    }
+#ifdef TARGET_WINDOWS
+    else if (m_ActiveAPI == RendererAPIType::DirectX11) {
+        m_Renderer = std::make_unique<DirectX11Renderer>();
+    }
+#endif
+
     glfwSetFramebufferSizeCallback(m_Window, FramebufferSizeCallback);
     glfwSetMouseButtonCallback(m_Window, MouseButtonCallback);
     glfwSetCursorPosCallback(m_Window, CursorPosCallback);
     glfwSetScrollCallback(m_Window, ScrollCallback);
     glfwSetKeyCallback(m_Window, KeyCallback);
 
-    // 初始化GLEW
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW" << std::endl;
-        return false;
-    }
-
-    // 初始化渲染器
-    m_Renderer = std::make_unique<OpenGLRenderer>();
-    if (!m_Renderer->Init()) {
+    if (!m_Renderer || !m_Renderer->Init(m_Window)) {
         std::cerr << "Failed to initialize renderer" << std::endl;
         return false;
     }
 
-    // 初始化ImGui
     m_ImGuiLayer = std::make_unique<ImGuiLayer>();
-    m_ImGuiLayer->Init(m_Window);
-    m_ImGuiLayer->OnModelLoadRequest([this](const std::string& path) {
-        LoadModel(path);
-    });
+    const auto uiCtx = m_Renderer->GetUIContext();
+    ImGuiInitInfo initInfo{};
+    initInfo.window = m_Window;
+    initInfo.rendererAPI = m_ActiveAPI;
+    initInfo.device = uiCtx.device;
+    initInfo.deviceContext = uiCtx.deviceContext;
 
-    // 创建默认场景和相机
+    if (!m_ImGuiLayer->Init(initInfo)) {
+        std::cerr << "Failed to initialize ImGui layer" << std::endl;
+        return false;
+    }
+
+    m_ImGuiLayer->OnModelLoadRequest([this](const std::string& path) { LoadModel(path); });
+
     m_AppState.currentScene = std::make_shared<Scene>("Main Scene");
     m_AppState.camera = std::make_shared<Camera>(
         glm::vec3(5.0f, 5.0f, 5.0f),
         glm::vec3(0.0f, 1.0f, 0.0f),
-        -135.0f, -30.0f
-    );
+        -135.0f, -30.0f);
 
-    int width, height;
+    int width = 0;
+    int height = 0;
     glfwGetFramebufferSize(m_Window, &width, &height);
     m_AppState.screenWidth = width;
     m_AppState.screenHeight = height;
     m_Renderer->SetViewport(0, 0, width, height);
 
-    std::cout << "Application initialized successfully!" << std::endl;
-    std::cout << "Controls:" << std::endl;
-    std::cout << "  - W/A/S/D: Move camera" << std::endl;
-    std::cout << "  - Q/E: Move camera up/down" << std::endl;
-    std::cout << "  - Left Mouse + Drag: Rotate camera" << std::endl;
-    std::cout << "  - Mouse Wheel: Zoom" << std::endl;
-    std::cout << "  - Left Click (without drag): Pick object" << std::endl;
-    std::cout << "  - Ctrl+O: Load model" << std::endl;
+    std::cout << "Application initialized with renderer: "
+              << (m_ActiveAPI == RendererAPIType::DirectX11 ? "DirectX11" : "OpenGL")
+              << std::endl;
 
     return true;
 }
@@ -143,7 +160,6 @@ void Application::ProcessInput()
         glfwSetWindowShouldClose(m_Window, true);
     }
 
-    // 相机移动
     if (glfwGetKey(m_Window, GLFW_KEY_W) == GLFW_PRESS) {
         m_AppState.camera->ProcessKeyboard(CameraMovement::FORWARD, m_DeltaTime);
     }
@@ -164,24 +180,22 @@ void Application::ProcessInput()
     }
 }
 
-void Application::Update(float deltaTime)
-{
-    // 这里可以添加游戏逻辑更新
-}
+void Application::Update(float /*deltaTime*/) {}
 
 void Application::Render()
 {
     m_Renderer->BeginFrame(m_AppState.renderSettings.clearColor);
-    m_Renderer->RenderScene(m_AppState.currentScene, m_AppState.camera,
-                            m_AppState.renderSettings);
-    m_Renderer->EndFrame();
+    m_Renderer->RenderScene(m_AppState.currentScene, m_AppState.camera, m_AppState.renderSettings);
 
-    // 渲染ImGui
     m_ImGuiLayer->BeginFrame();
     m_ImGuiLayer->RenderUI(m_AppState);
     m_ImGuiLayer->EndFrame();
 
-    glfwSwapBuffers(m_Window);
+    m_Renderer->EndFrame();
+
+    if (m_ActiveAPI == RendererAPIType::OpenGL) {
+        glfwSwapBuffers(m_Window);
+    }
 }
 
 void Application::LoadModel(const std::string& path)
@@ -192,11 +206,10 @@ void Application::LoadModel(const std::string& path)
     if (model->LoadFromFile(path)) {
         std::string entityName = model->GetName();
         auto entity = m_AppState.currentScene->CreateEntity(entityName, model);
-        
+
         std::cout << "Model loaded successfully: " << entityName << std::endl;
         std::cout << "  Meshes: " << model->GetMeshes().size() << std::endl;
-        
-        // 选中新加载的实体
+
         if (m_AppState.selectedEntity) {
             m_AppState.selectedEntity->SetSelected(false);
         }
@@ -207,8 +220,7 @@ void Application::LoadModel(const std::string& path)
     }
 }
 
-// GLFW回调实现
-void Application::FramebufferSizeCallback(GLFWwindow* window, int width, int height)
+void Application::FramebufferSizeCallback(GLFWwindow* /*window*/, int width, int height)
 {
     if (s_Instance && s_Instance->m_Renderer) {
         s_Instance->m_Renderer->SetViewport(0, 0, width, height);
@@ -217,12 +229,12 @@ void Application::FramebufferSizeCallback(GLFWwindow* window, int width, int hei
     }
 }
 
-void Application::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+void Application::MouseButtonCallback(GLFWwindow* window, int button, int action, int /*mods*/)
 {
     if (!s_Instance) return;
 
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureMouse) return; // ImGui正在使用鼠标
+    if (io.WantCaptureMouse) return;
 
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
         if (action == GLFW_PRESS) {
@@ -230,25 +242,22 @@ void Application::MouseButtonCallback(GLFWwindow* window, int button, int action
             s_Instance->m_FirstMouse = true;
             glfwGetCursorPos(window, &s_Instance->m_LastMouseX, &s_Instance->m_LastMouseY);
         } else if (action == GLFW_RELEASE) {
-            // 如果没有移动鼠标（点击而非拖拽），进行拾取
-            double currentX, currentY;
+            double currentX = 0.0;
+            double currentY = 0.0;
             glfwGetCursorPos(window, &currentX, &currentY);
-            
-            double deltaX = currentX - s_Instance->m_LastMouseX;
-            double deltaY = currentY - s_Instance->m_LastMouseY;
-            
+
+            const double deltaX = currentX - s_Instance->m_LastMouseX;
+            const double deltaY = currentY - s_Instance->m_LastMouseY;
+
             if (std::abs(deltaX) < 5.0 && std::abs(deltaY) < 5.0) {
-                // 执行拾取
                 auto pickedEntity = s_Instance->m_Renderer->PickEntity(
                     s_Instance->m_AppState.currentScene,
                     s_Instance->m_AppState.camera,
                     static_cast<int>(currentX),
                     static_cast<int>(currentY),
                     s_Instance->m_AppState.screenWidth,
-                    s_Instance->m_AppState.screenHeight
-                );
+                    s_Instance->m_AppState.screenHeight);
 
-                // 取消之前的选择
                 if (s_Instance->m_AppState.selectedEntity) {
                     s_Instance->m_AppState.selectedEntity->SetSelected(false);
                 }
@@ -268,7 +277,7 @@ void Application::MouseButtonCallback(GLFWwindow* window, int button, int action
     }
 }
 
-void Application::CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
+void Application::CursorPosCallback(GLFWwindow* /*window*/, double xpos, double ypos)
 {
     if (!s_Instance || !s_Instance->m_MousePressed) return;
 
@@ -282,8 +291,8 @@ void Application::CursorPosCallback(GLFWwindow* window, double xpos, double ypos
         return;
     }
 
-    float xoffset = static_cast<float>(xpos - s_Instance->m_LastMouseX);
-    float yoffset = static_cast<float>(s_Instance->m_LastMouseY - ypos);
+    const float xoffset = static_cast<float>(xpos - s_Instance->m_LastMouseX);
+    const float yoffset = static_cast<float>(s_Instance->m_LastMouseY - ypos);
 
     s_Instance->m_LastMouseX = xpos;
     s_Instance->m_LastMouseY = ypos;
@@ -291,7 +300,7 @@ void Application::CursorPosCallback(GLFWwindow* window, double xpos, double ypos
     s_Instance->m_AppState.camera->ProcessMouseMovement(xoffset, yoffset);
 }
 
-void Application::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+void Application::ScrollCallback(GLFWwindow* /*window*/, double /*xoffset*/, double yoffset)
 {
     if (!s_Instance) return;
 
@@ -301,21 +310,17 @@ void Application::ScrollCallback(GLFWwindow* window, double xoffset, double yoff
     s_Instance->m_AppState.camera->ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
-void Application::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void Application::KeyCallback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int mods)
 {
-    if (!s_Instance) return;
+    if (!s_Instance || action != GLFW_PRESS) return;
 
-    if (action == GLFW_PRESS) {
-        // Ctrl+O: 打开模型加载对话框
-        if (key == GLFW_KEY_O && (mods & GLFW_MOD_CONTROL)) {
-            s_Instance->m_AppState.showModelLoader = true;
-        }
-        
-        // Delete: 删除选中的实体
-        if (key == GLFW_KEY_DELETE && s_Instance->m_AppState.selectedEntity) {
-            s_Instance->m_AppState.currentScene->RemoveEntity(s_Instance->m_AppState.selectedEntity);
-            s_Instance->m_AppState.selectedEntity = nullptr;
-        }
+    if (key == GLFW_KEY_O && (mods & GLFW_MOD_CONTROL)) {
+        s_Instance->m_AppState.showModelLoader = true;
+    }
+
+    if (key == GLFW_KEY_DELETE && s_Instance->m_AppState.selectedEntity) {
+        s_Instance->m_AppState.currentScene->RemoveEntity(s_Instance->m_AppState.selectedEntity);
+        s_Instance->m_AppState.selectedEntity = nullptr;
     }
 }
 
