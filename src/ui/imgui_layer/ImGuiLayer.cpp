@@ -166,6 +166,7 @@ void ImGuiLayer::RenderUI(AppState& state)
     hostFlags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse;
     hostFlags |= ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
     hostFlags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+    hostFlags |= ImGuiWindowFlags_NoBackground;
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -192,8 +193,10 @@ void ImGuiLayer::RenderUI(AppState& state)
     if (state.showModelLoader) RenderModelLoader(state);
     if (state.showDemoWindow) ImGui::ShowDemoWindow(&state.showDemoWindow);
 
+    ImGui::SetNextWindowBgAlpha(0.35f);
     ImGui::Begin("Viewport", nullptr,
-                 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                 ImGuiWindowFlags_AlwaysAutoResize);
     ImGui::TextUnformatted("3D Viewport");
     ImGui::Separator();
     ImGui::Text("Renderer: %s", m_RendererAPI == RendererAPIType::DirectX11 ? "DirectX11" : "OpenGL");

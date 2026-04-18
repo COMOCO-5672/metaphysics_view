@@ -2,16 +2,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug metaphysics (MSVC)",
+            "name": "Debug metaphysics (OpenGL/MSVC)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build_win_dx11/bin/Debug/metaphysics.exe",
+            "program": "${workspaceFolder}/build_win_gl/bin/Debug/metaphysics.exe",
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
             "environment": [
                 {
                     "name": "METAPHYSICS_RENDERER",
-                    "value": "dx11"
+                    "value": "opengl"
                 },
                 {
                     "name": "METAPHYSICS_UI",
@@ -22,14 +22,12 @@
             "preLaunchTask": "CMake: Build (VSCode)"
         },
         {
-            "name": "Debug metaphysics (Ninja/Single Config)",
-            "type": "cppdbg",
+            "name": "Debug metaphysics (DX11/MSVC)",
+            "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build_vscode/bin/metaphysics.exe",
+            "program": "${workspaceFolder}/build_win_gl/bin/Debug/metaphysics.exe",
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "D:/msys64/mingw64/bin/gdb.exe",
             "externalConsole": false,
             "environment": [
                 {
@@ -39,13 +37,6 @@
                 {
                     "name": "METAPHYSICS_UI",
                     "value": "imgui"
-                }
-            ],
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
                 }
             ],
             "preLaunchTask": "CMake: Build (VSCode)"

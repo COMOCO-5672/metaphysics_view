@@ -4,7 +4,7 @@
         {
             "label": "CMake: Configure (VSCode)",
             "type": "shell",
-            "command": "$buildDir = if ($IsWindows) { \"build_win_dx11\" } else { \"build_vscode\" }; if (!(Test-Path $buildDir)) { New-Item -ItemType Directory -Path $buildDir | Out-Null }; if ($IsWindows) { cmake -S . -B $buildDir -G \"Visual Studio 17 2022\" -A x64 } elseif (Get-Command ninja -ErrorAction SilentlyContinue) { cmake -S . -B $buildDir -G Ninja -DCMAKE_BUILD_TYPE=Debug } else { cmake -S . -B $buildDir -DCMAKE_BUILD_TYPE=Debug }",
+            "command": "$buildDir = 'build_win_gl'; if (!(Test-Path $buildDir)) { New-Item -ItemType Directory -Path $buildDir | Out-Null }; cmake -S . -B $buildDir -G 'Visual Studio 17 2022' -A x64",
             "options": {
                 "cwd": "${workspaceFolder}",
                 "shell": {
@@ -26,7 +26,7 @@
         {
             "label": "CMake: Build (VSCode)",
             "type": "shell",
-            "command": "$buildDir = if ($IsWindows) { \"build_win_dx11\" } else { \"build_vscode\" }; if (!(Test-Path $buildDir)) { throw \"$buildDir does not exist. Run CMake: Configure first.\" }; if (Test-Path \"$buildDir\\build.ninja\") { cmake --build $buildDir } else { cmake --build $buildDir --config Debug }",
+            "command": "$buildDir = 'build_win_gl'; if (!(Test-Path $buildDir)) { throw 'build_win_gl does not exist. Run CMake: Configure first.' }; cmake --build $buildDir --config Debug",
             "options": {
                 "cwd": "${workspaceFolder}",
                 "shell": {
@@ -52,7 +52,7 @@
         {
             "label": "CMake: Clean (VSCode)",
             "type": "shell",
-            "command": "$buildDir = if ($IsWindows) { \"build_win_dx11\" } else { \"build_vscode\" }; if (Test-Path $buildDir) { Remove-Item -LiteralPath $buildDir -Recurse -Force }",
+            "command": "$buildDir = 'build_win_gl'; if (Test-Path $buildDir) { Remove-Item -LiteralPath $buildDir -Recurse -Force }",
             "options": {
                 "cwd": "${workspaceFolder}",
                 "shell": {
@@ -70,7 +70,7 @@
         {
             "label": "Run: metaphysics (VSCode)",
             "type": "shell",
-            "command": "$env:METAPHYSICS_RENDERER = \"dx11\"; $env:METAPHYSICS_UI = \"imgui\"; $buildDir = if ($IsWindows) { \"build_win_dx11\" } else { \"build_vscode\" }; $candidates = @(\"$buildDir\\bin\\Debug\\metaphysics.exe\",\"$buildDir\\bin\\Release\\metaphysics.exe\",\"$buildDir\\bin\\metaphysics.exe\"); $exe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1; if (-not $exe) { throw \"metaphysics.exe not found. Run CMake: Build first.\" }; $exeDir = Split-Path $exe -Parent; Push-Location $exeDir; try { .\\metaphysics.exe } finally { Pop-Location }",
+            "command": "$env:METAPHYSICS_RENDERER = 'opengl'; $env:METAPHYSICS_UI = 'imgui'; $buildDir = 'build_win_gl'; $candidates = @(\"$buildDir\\bin\\Debug\\metaphysics.exe\",\"$buildDir\\bin\\Release\\metaphysics.exe\",\"$buildDir\\bin\\metaphysics.exe\"); $exe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1; if (-not $exe) { throw 'metaphysics.exe not found. Run CMake: Build first.' }; & $exe",
             "options": {
                 "cwd": "${workspaceFolder}",
                 "shell": {

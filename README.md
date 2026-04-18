@@ -1,5 +1,11 @@
 # metaphysics_view
 
+## Current Learning Track
+
+- Default renderer: `OpenGL`
+- Default editor UI: `ImGui`
+- Optional Windows renderer override: `METAPHYSICS_RENDERER=dx11`
+
 基于 OpenGL 的 3D 渲染器（C++17）：模型加载（Assimp）、场景与材质、ImGui 界面。详细功能与架构见 [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)、[ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 依赖说明

@@ -4,15 +4,18 @@
 #include <assimp/postprocess.h>
 #include <iostream>
 #include <limits>
+#include <filesystem>
 
 namespace Metaphysics {
 
 bool Model::LoadFromFile(const std::string& path)
 {
+    namespace fs = std::filesystem;
+
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(path, 
-        aiProcess_Triangulate | 
-        aiProcess_GenNormals | 
+    const aiScene* scene = importer.ReadFile(path,
+        aiProcess_Triangulate |
+        aiProcess_GenNormals |
         aiProcess_FlipUVs |
         aiProcess_CalcTangentSpace);
 
@@ -22,16 +25,9 @@ bool Model::LoadFromFile(const std::string& path)
     }
 
     m_Path = path;
-    m_Directory = path.substr(0, path.find_last_of('/'));
-    
-    // 从路径提取文件名作为模型名
-    size_t lastSlash = path.find_last_of("/\\");
-    size_t lastDot = path.find_last_of('.');
-    if (lastSlash != std::string::npos && lastDot != std::string::npos) {
-        m_Name = path.substr(lastSlash + 1, lastDot - lastSlash - 1);
-    } else {
-        m_Name = "Unnamed Model";
-    }
+    const fs::path filePath(path);
+    m_Directory = filePath.has_parent_path() ? filePath.parent_path().string() : std::string();
+    m_Name = filePath.stem().empty() ? "Unnamed Model" : filePath.stem().string();
 
     ProcessNode(scene->mRootNode, (void*)scene);
     return true;
@@ -42,13 +38,11 @@ void Model::ProcessNode(void* nodePtr, void* scenePtr)
     aiNode* node = (aiNode*)nodePtr;
     const aiScene* scene = (const aiScene*)scenePtr;
 
-    // 处理节点所有的网格
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
         m_Meshes.push_back(ProcessMesh(mesh, (void*)scene));
     }
 
-    // 递归处理子节点
     for (unsigned int i = 0; i < node->mNumChildren; i++) {
         ProcessNode(node->mChildren[i], scenePtr);
     }
@@ -61,10 +55,9 @@ std::shared_ptr<Mesh> Model::ProcessMesh(void* meshPtr, void* scenePtr)
 
     auto resultMesh = std::make_shared<Mesh>();
 
-    // 处理顶点
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
         Vertex vertex;
-        
+
         vertex.position = glm::vec3(
             mesh->mVertices[i].x,
             mesh->mVertices[i].y,
@@ -93,7 +86,6 @@ std::shared_ptr<Mesh> Model::ProcessMesh(void* meshPtr, void* scenePtr)
         resultMesh->vertices.push_back(vertex);
     }
 
-    // 处理索引
     for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
         aiFace face = mesh->mFaces[i];
         for (unsigned int j = 0; j < face.mNumIndices; j++) {
@@ -101,8 +93,6 @@ std::shared_ptr<Mesh> Model::ProcessMesh(void* meshPtr, void* scenePtr)
         }
     }
 
-    // 处理材质 — 对于没有 .mtl 的 OBJ, Assimp 可能返回极低的值,
-    // 因此先设合理的默认值, 再尝试从文件读取, 最后做 clamp.
     resultMesh->material = std::make_shared<Material>();
     if (mesh->mMaterialIndex >= 0) {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
@@ -122,8 +112,6 @@ std::shared_ptr<Mesh> Model::ProcessMesh(void* meshPtr, void* scenePtr)
         glm::vec3 spc = hasSpecular ? glm::vec3(specular.r, specular.g, specular.b) : glm::vec3(0.5f);
         float shi = hasShininess ? shininess : 32.0f;
 
-        // Assimp sometimes returns near-black ambient/diffuse for simple OBJs;
-        // if all components are below a threshold, use sensible defaults.
         auto isNearBlack = [](const glm::vec3& c) {
             return (c.r + c.g + c.b) < 0.05f;
         };
@@ -138,7 +126,6 @@ std::shared_ptr<Mesh> Model::ProcessMesh(void* meshPtr, void* scenePtr)
         resultMesh->material->SetShininess(shi);
     }
 
-    // 计算AABB
     ComputeMeshAABB(resultMesh);
 
     return resultMesh;

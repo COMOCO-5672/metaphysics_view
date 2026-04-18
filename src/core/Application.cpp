@@ -5,10 +5,44 @@
 #include <cstdlib>
 #include <cctype>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 
 namespace Metaphysics {
+namespace {
+
+std::string ResolveProjectPath(const std::string& inputPath)
+{
+    namespace fs = std::filesystem;
+
+    const fs::path requested(inputPath);
+    if (requested.is_absolute() && fs::exists(requested)) {
+        return requested.string();
+    }
+
+    fs::path cursor = fs::current_path();
+    for (int i = 0; i < 8; ++i) {
+        const fs::path candidate = cursor / requested;
+        if (fs::exists(candidate)) {
+            return candidate.lexically_normal().string();
+        }
+
+        const fs::path modelsRoot = cursor / "models";
+        if (fs::exists(modelsRoot) && fs::exists(modelsRoot / requested.filename()) && requested.parent_path().empty()) {
+            return (modelsRoot / requested.filename()).lexically_normal().string();
+        }
+
+        if (!cursor.has_parent_path()) {
+            break;
+        }
+        cursor = cursor.parent_path();
+    }
+
+    return inputPath;
+}
+
+} // namespace
 
 Application* Application::s_Instance = nullptr;
 
@@ -38,14 +72,14 @@ bool Application::Init()
 #endif
 
 #ifdef TARGET_WINDOWS
-    m_ActiveAPI = RendererAPIType::DirectX11;
+    m_ActiveAPI = RendererAPIType::OpenGL;
     if (const char* backend = std::getenv("METAPHYSICS_RENDERER")) {
         std::string value(backend);
         for (char& c : value) c = static_cast<char>(::tolower(c));
-        if (value == "gl" || value == "opengl") {
-            m_ActiveAPI = RendererAPIType::OpenGL;
-        } else if (value == "dx11" || value == "directx" || value == "directx11") {
+        if (value == "dx11" || value == "directx" || value == "directx11") {
             m_ActiveAPI = RendererAPIType::DirectX11;
+        } else if (value == "gl" || value == "opengl") {
+            m_ActiveAPI = RendererAPIType::OpenGL;
         }
     }
 #endif
@@ -239,10 +273,11 @@ void Application::Render()
 
 void Application::LoadModel(const std::string& path)
 {
-    std::cout << "Loading model: " << path << std::endl;
+    const std::string resolvedPath = ResolveProjectPath(path);
+    std::cout << "Loading model: " << resolvedPath << std::endl;
 
     auto model = std::make_shared<Model>();
-    if (model->LoadFromFile(path)) {
+    if (model->LoadFromFile(resolvedPath)) {
         std::string entityName = model->GetName();
         auto entity = m_AppState.currentScene->CreateEntity(entityName, model);
         entity->SetPosition(ComputeSpawnPosition());
@@ -257,7 +292,7 @@ void Application::LoadModel(const std::string& path)
         entity->SetSelected(true);
         FocusCameraOnSelection();
     } else {
-        std::cerr << "Failed to load model: " << path << std::endl;
+        std::cerr << "Failed to load model: " << resolvedPath << std::endl;
     }
 }
 
@@ -294,7 +329,7 @@ void Application::FocusCameraOnSelection()
 void Application::LoadStartupModel()
 {
     static const char* kStartupModel = "models/cube.obj";
-    std::ifstream file(kStartupModel);
+    std::ifstream file(ResolveProjectPath(kStartupModel));
     if (file.good()) {
         LoadModel(kStartupModel);
     } else {
